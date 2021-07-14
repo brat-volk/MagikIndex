@@ -7,7 +7,6 @@
 #include <VersionHelpers.h>
 
 #define MAX_LENGTH 1024
-#define debug
 
 #pragma comment(lib, "Wininet.lib")
 
