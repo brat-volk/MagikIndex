@@ -239,7 +239,7 @@ Log:
     std::string OEMText = "OEM Number:";
     std::string CPUNumberText = "Number Of Cores:";
     std::string CPUTypeText = "CPU Type:";
-    std::string GenuineText = "Pirated Windows:";
+    std::string GenuineText = "Genuine Windows:";
 
     char* AppData = nullptr;
     size_t AppDataSize;
