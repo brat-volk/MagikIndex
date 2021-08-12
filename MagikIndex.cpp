@@ -249,7 +249,9 @@ int main()
 
     DWORD Tick1 = GetTickCount();
 
-    srand((int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator());
+    int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
+
+    srand(RandSeed);
 
     bool PatchedMe = false;
 
@@ -295,6 +297,7 @@ Log:
     std::string MiddleEastText = "Middle-East PC:";
     std::string BootText = "Normal Boot:";
     std::string RAMText = "RAM Size:";
+    std::string SeedText = "Randomness Seed:";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -317,7 +320,26 @@ Log:
     CurrentLog += LogTime;
     CurrentLog += ".txt";
 
+    SYSTEMTIME SysTime;
+    char TimeBuffer[512];
+    ZeroMemory(&TimeBuffer, sizeof(TimeBuffer));
+    GetLocalTime(&SysTime);
 
+    std::string StartDate = "_________";
+    StartDate += std::to_string(SysTime.wDay);
+    StartDate += "/";
+    StartDate += std::to_string(SysTime.wMonth);
+    StartDate += "/";
+    StartDate += std::to_string(SysTime.wYear);
+    StartDate += "  ";
+    StartDate += std::to_string(SysTime.wHour);
+    StartDate += ":";
+    StartDate += std::to_string(SysTime.wMinute);
+    StartDate += ":";
+    StartDate += std::to_string(SysTime.wSecond);
+    StartDate += "_________\n";
+
+    LogItChar(StartDate, CurrentLog);
 
 #ifdef debug
 
@@ -325,12 +347,13 @@ Log:
 
 #else
 
-    LogItChar("Started in normal mode...", CurrentLog);
+    LogItChar("Started in normal mode...", CurrentLog);              
 
 #endif
 
     if (PatchedMe) {
-        LogItChar("",CurrentLog);
+        LogItChar("I was patched! Exiting... ;(",CurrentLog);
+        exit(1);
     }
 
 
@@ -340,10 +363,17 @@ Log:
 
     char UserName[MAX_LENGTH+1];
 
-    std::string InternetStatusString = "Not connected";
+    std::string InternetStatusString = "Not connected, error: ";
 
-    if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) {
-        std::string InternetStatusString = "Connected";
+    DWORD DWFlags;
+
+    //if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) { //switch between these two ways to check as you see fit, or even use both
+    if (InternetGetConnectedState(&DWFlags,NULL)){
+        InternetStatusString = "Connected";
+    }else{
+        InternetStatusString += std::to_string(GetLastError());
+        InternetStatusString += ", returned flags: ";
+        InternetStatusString += std::to_string(DWFlags);
     }
 
     GetComputerNameA(HostName,&Size);
@@ -554,6 +584,9 @@ Log:
 
     MiddleEastText += MiddleEast;
     LogItChar(MiddleEastText, CurrentLog);
+
+    SeedText += std::to_string(RandSeed);
+    LogItChar(SeedText, CurrentLog);
 
 
     LogItChar("------------------------------------------\n",CurrentLog);
