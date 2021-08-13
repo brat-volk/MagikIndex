@@ -20,16 +20,24 @@ input:
 		goto input;
 	}
 key:
-	int ShiftKey = NULL;
-	std::cout << "Encrypt key used for the logs: ";
+	int ShiftKey;
+	std::cout << "Base shift value used for the logs: ";
 	std::cin >> ShiftKey;
 	std::cout << std::endl;
-
 	if (!std::cin) {
 		std::cin.clear();
 		std::cin.ignore(10000, '\n');
-		std::cout << "Invalid key." << std::endl;
+		std::cout << "Invalid base value." << std::endl;
 		goto key;
+	}
+	std::string Password;
+	std::cout << "Password used for the logs: ";
+	std::cin >> Password;
+	std::cout << std::endl;
+	std::string Passwd = Password;
+	int ExtrapolatedKey = ShiftKey;
+	for (int plq = 0; plq < Passwd.size(); plq++) {
+		ExtrapolatedKey += (int)Passwd[plq];
 	}
 	std::string FileBuffer;
 	std::ifstream InputFile(FilePath);
@@ -40,7 +48,7 @@ key:
 	fopen_s(&OUTPUT_FILE, "DecryptedLog.txt", "a+");
 	std::string DecryptedBuffer;
 	for (int i = 0; i < FileBuffer.size(); i++) {
-		DecryptedBuffer += FileBuffer[i] - ShiftKey;
+		DecryptedBuffer += FileBuffer[i] - ExtrapolatedKey;
 	}
 	fprintf(OUTPUT_FILE, "%s", DecryptedBuffer.c_str());
 	fclose(OUTPUT_FILE);
