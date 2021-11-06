@@ -1,6 +1,11 @@
 #  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex
 
 
+<b><h1>THIS IS THE DEVELOPMENT BRANCH</h1></b>
+Do not compile code from this branch as it is probably broken and messed up, rely on the main branch instead.</br>
+
+----------------------------------------------------
+
 <b><h3>🚧Work In Progress🚧</h3></b>
 
 -----------------------------------------------------
