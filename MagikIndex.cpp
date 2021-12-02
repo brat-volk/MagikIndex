@@ -167,6 +167,8 @@ Log:
     std::string SlowText = "Low-End CPU:";
     std::string MouseText = "Number Of Mouse Buttons:";
     std::string MonitorText = "Number Of Monitors:";
+    std::string LanguageText = "Install Language:";
+    std::string CurrencyText = "Install Currency:";
     std::string MiddleEastText = "Middle-East PC:";
     std::string BootText = "Normal Boot:";
     std::string RAMText = "RAM Size:";
@@ -423,6 +425,15 @@ Log:
         }
     }
 
+    char Locale[LOCALE_NAME_MAX_LENGTH];
+
+    GetCurrencyFormatA(
+        LOCALE_SYSTEM_DEFAULT, 
+        LOCALE_NOUSEROVERRIDE,
+        "0",
+        NULL,
+        Locale,
+        LOCALE_NAME_MAX_LENGTH+1);
 
     TimeText += LogTime;
     LogItChar(TimeText, CurrentLog);
@@ -478,6 +489,12 @@ Log:
 
     SlowText += SlowMachine;
     LogItChar(SlowText, CurrentLog);
+
+    LanguageText += GetSystemDefaultUILanguage();
+    LogItChar(LanguageText, CurrentLog);
+
+    CurrencyText += Locale;
+    LogItChar(CurrencyText, CurrentLog);
 
     MiddleEastText += MiddleEast;
     LogItChar(MiddleEastText, CurrentLog);
