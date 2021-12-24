@@ -17,7 +17,8 @@ Currently pretty advanced at over 1k lines of code.
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
   <li>Offers an un-encrypted and VM-friendly mode for debugging purposes.</li>
-  <li>ScreenGrabbing and file compression are W.I.P., almost working.</li>
+  <li>Files are Winzip compressed, with lz4 W.I.P.</li>
+  <li>ScreenGrabbing is W.I.P., almost working.</li>
   <li>Features a wide range of diagnostic info with more on the way.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
   <li>Does various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
@@ -29,7 +30,8 @@ Currently pretty advanced at over 1k lines of code.
 <b> <h3> Screenshots </h3> </b> </br>
 
 <b>Debug-Mode Log</b>
-![DecryptedLog](https://user-images.githubusercontent.com/43145630/139556345-9c8d150a-189c-47ea-a812-866d271acb23.PNG)
+![hdgsadhj](https://user-images.githubusercontent.com/43145630/147356196-1758d698-1f57-42fe-a63e-cff6ed452539.PNG)
+
 
 <b>Crypted Log</b>
 ![cryptedlog2](https://user-images.githubusercontent.com/43145630/139556328-f7c2b3e7-a794-48b9-aaa1-34e245772ef3.PNG)
