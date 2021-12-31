@@ -12,13 +12,13 @@ Currently pretty advanced at over 1k lines of code.
 
 <b> <h3> Features </h3> </b> </br>
 <ul>
-  <li><b>As of 30/10/21 it's 100% FUD on VT.</b></li>
+  <li><b>As of 31/12/21 it's Detected on VT.</b></li>
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
   <li>Offers an un-encrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
-  <li>ScreenGrabbing is W.I.P., almost working.</li>
+  <li>ScreenGrabbing is working, with ScreenShot-On-Click and more W.I.P.</li>
   <li>Features a wide range of diagnostic info with more on the way.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
   <li>Does various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
