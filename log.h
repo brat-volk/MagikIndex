@@ -1,5 +1,11 @@
 
 
+
+std::set<DWORD> getAllThreadIds();
+template <class InputIterator>
+HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest);
+
+
 class Log {
 private:
 

