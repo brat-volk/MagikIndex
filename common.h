@@ -50,7 +50,7 @@ using buffer = std::vector<char>;
 #define SendersPsw ""
 #define RecieversEmail ""
 #define MaxInactivity 10    //max amount of seconds since last input
-#define MinRequiredApps 20  //minimum amount of intalled programs
+#define MinRequiredApps 20  //minimum amount of installed programs
 #define SecurityLevel 3     //0-3 levels of trust towards environment
 #define MinHardDisk 60      //minimum size for the main partition
 #define DelayExecution true //whether or not execution should be delayed
