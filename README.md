@@ -12,7 +12,7 @@ Currently pretty advanced at over 1k lines of code.
 
 <b> <h3> Features </h3> </b> </br>
 <ul>
-  <li><b>As of 30/01/22 it's almost FUD on VT.</b>(2/68)</li>
+  <li><b>As of 30/01/22 it's almost FUD on VT.</b>(1/68)</li>
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
