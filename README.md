@@ -30,8 +30,7 @@ Currently pretty advanced at over 1k lines of code.
 <b> <h3> Screenshots </h3> </b> </br>
 
 <b>Debug-Mode Log</b>
-![hdgsadhj](https://user-images.githubusercontent.com/43145630/147356196-1758d698-1f57-42fe-a63e-cff6ed452539.PNG)
-
+![new_MI_sc](https://user-images.githubusercontent.com/43145630/151706542-ebf1c3b8-f70e-41d1-9494-47d830335bd4.PNG)
 
 <b>Crypted Log</b>
 ![cryptedlog2](https://user-images.githubusercontent.com/43145630/139556328-f7c2b3e7-a794-48b9-aaa1-34e245772ef3.PNG)
