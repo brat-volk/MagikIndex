@@ -1,6 +1,38 @@
 #include "common.h"
 
 
+void AntiDBG::Initialize() {
+    memset(&TrustItem,false,sizeof(TrustItem));
+    if(ResCheck())
+        trust -= 20;
+    if(VMGFileCheck())
+        trust -= 30;
+    if(VMHFileCheck())
+        trust += 30;
+    if(HDDCheck())
+        trust -= 30;
+    if(RAMCheck())
+        trust -= 30;
+    if(CPUCheck())
+        trust -= 30;
+    if(MonitorCheck())
+        trust += 10;
+    if(TimeCheck())
+        trust -= 30;
+    if(InteractionCheck())
+        trust -= 20;
+    if(InternetCheck())
+        trust += 10;
+    if(AMCheck())
+        trust += 10;
+    if(AppCheck())
+        trust -= 30;
+    if (IsDebuggerPresent) {
+        trust -= 50;
+        TrustItem.IsBeingDebugged = true;
+    }
+}
+
 bool AntiDBG::ResCheck() {
 
     int x1, y1, x2, y2, w, h;
@@ -90,7 +122,7 @@ bool AntiDBG::VMHFileCheck() {
     LPCSTR BannedFiles[] = {
        //VirtualBox
         "C:\\Windows\\System32\\drivers\\VBoxDrv.sys",
-        "C:\\Windows\\System32\\drivers\\VBox",
+        "C:\\Windows\\System32\\drivers\\VBoxNetAdp6",
         "C:\\Windows\\System32\\drivers\\VBoxNetLwf.sys",
         "C:\\Windows\\System32\\drivers\\VBoxUSBMon.sys",
     };
@@ -106,7 +138,33 @@ bool AntiDBG::VMHFileCheck() {
 
 }
 bool AntiDBG::HDDCheck() {
-
+    ULARGE_INTEGER total_bytes;
+    HANDLE drive;
+    BOOL result;
+    GET_LENGTH_INFORMATION size;
+    DWORD lpBytesReturned;
+    drive = CreateFile("\\\\.\\PhysicalDrive0", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (drive == INVALID_HANDLE_VALUE) {
+        CloseHandle(drive);
+        return true;
+    }
+    result = DeviceIoControl(drive, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &size, sizeof(GET_LENGTH_INFORMATION), &lpBytesReturned, NULL);
+    CloseHandle(drive);
+    if (result != 0) {
+        if (size.Length.QuadPart / 1073741824 <= MinHardDisk) {
+            TrustItem.IsSmallHardDrive = true;
+            return true;
+        }
+    }
+    if (GetDiskFreeSpaceExA("C:\\", NULL, &total_bytes, NULL))
+    {
+        if (total_bytes.QuadPart / 1073741824 <= MinHardDisk) {
+            TrustItem.IsSmallHardDrive = true;
+            return true;
+            //add additional flag, since someone is trying to bamboozle me by hooking DeviceIoControl
+        }
+    }
+    return false;
 }
 bool AntiDBG::RAMCheck() {
     MEMORYSTATUSEX RAMStatus;
@@ -152,7 +210,7 @@ bool AntiDBG::InteractionCheck() {
     GetCursorPos(&position1);
     Sleep(10000);
     GetCursorPos(&position2);
-    if ((position1.x == position2.x) && (position1.y == position2.y)) {             //make extended inactivity check for user input through GetLastInput();
+    if ((position1.x == position2.x) && (position1.y == position2.y)) {
         TrustItem.UserIsInactive = true;
         Sleep(5000);
         Tick = GetTickCount();
@@ -179,6 +237,84 @@ bool AntiDBG::InternetCheck() {
     return false;
 }
 bool AntiDBG::AMCheck() {
+    int res = FALSE;
+    HANDLE hpSnap;
+    PROCESSENTRY32 pentry;
+    LPCSTR BannedProcs[] = {
+       //mbam
+        "mbamtray.exe",
+        "mbam.exe",
+       //bitdefender
+        "bdagent.exe",
+        "bdredline.exe",
+        "bdss.exe",
+       //avast
+        "AvastSvc.exe",
+        "avastUI.exe",
+        "afwServ.exe",
+        "ashWebSv.exe",
+       //norton
+        "ccsvchst.exe",
+        "navapsvc.exe",
+       //mcafee
+        "masvc.exe",
+        "macmnsvc.exe",
+        "macompatsvc.exe",
+        "mfefire.exe",
+        "mfemms.exe",
+        "mfevtps.exe",
+        "mctray.exe",
+        "mfeatp.exe",
+        "Mcshield.exe"
+
+    };
+    hpSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hpSnap != INVALID_HANDLE_VALUE) {
+        pentry.dwSize = sizeof(PROCESSENTRY32);
+    }
+    else {
+        return false;
+    }
+
+    if (!Process32First(hpSnap, &pentry)) {
+        CloseHandle(hpSnap);
+        return false;
+    }
+
+    do {
+        for (int i = 0; i < 20; i++) {                                              //deploy dynamic size thanks
+            if (lstrcmpi(pentry.szExeFile, BannedProcs[i]) == 0) {
+                TrustItem.HasRunningAntiMalware = true;
+                return true;
+            }
+        }
+    } while (Process32Next(hpSnap, &pentry)); 
+    return false;
 }
 bool AntiDBG::AppCheck() {
+    HANDLE hFind;
+    WIN32_FIND_DATAA data;
+
+    char Directory[MAX_PATH] = "C:\\Program Files\\*.*";
+
+    int FileCounter = 0;
+
+    char FilePath[MAX_PATH + 1];
+    DWORD FileSize = MAX_PATH + 1;
+
+    hFind = FindFirstFileA(Directory, &data);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            //GetFinalPathNameByHandleA(hFind, FilePath, FileSize, 0x0);
+            //if (!(GetFileAttributesA(FilePath) & FILE_ATTRIBUTE_DIRECTORY)) {
+            FileCounter++;
+            //}
+        } while (FindNextFileA(hFind, &data));
+        FindClose(hFind);
+    }
+    if (FileCounter >= MinRequiredApps) {
+        TrustItem.HasMoreThan20Apps = true;
+        return true;
+    }
+    return false;
 }

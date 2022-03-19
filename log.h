@@ -15,7 +15,6 @@ private:
 
 public:
 
-	int ExtrapolateKey();
 	void CreateLog();
 	void LogItInt(int key_stroke);
 	void LogItChar(std::string Value);

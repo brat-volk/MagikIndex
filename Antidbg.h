@@ -20,6 +20,7 @@ class AntiDBG {
 public:
 	int trust = 100;
 	TrustItems TrustItem;
+	void Initialize();
 private:
 	bool ResCheck();
 	bool VMGFileCheck();
