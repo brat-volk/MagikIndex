@@ -3,8 +3,11 @@
 #include <fstream>
 #include <string>
 #include <windows.h>
+#include "../MagikIndex/base64.h"
 FILE* INPUT_FILE;
 FILE* OUTPUT_FILE;
+std::string DecryptMyString(std::string EncryptedString);
+int GetKey(std::string EncryptedString);
 bool fexists(const std::string& filename) {
 	std::ifstream ifile(filename.c_str());
 	return (bool)ifile;
@@ -19,40 +22,50 @@ input:
 		std::cout << "Invalid file path." << std::endl;
 		goto input;
 	}
-key:
-	int ShiftKey;
-	std::cout << "Base shift value used for the logs: ";
-	std::cin >> ShiftKey;
-	std::cout << std::endl;
-	if (!std::cin) {
-		std::cin.clear();
-		std::cin.ignore(10000, '\n');
-		std::cout << "Invalid base value." << std::endl;
-		goto key;
-	}
-	std::string Password;
-	std::cout << "Password used for the logs: ";
-	std::cin >> Password;
-	std::cout << std::endl;
-	std::string Passwd = Password;
-	int ExtrapolatedKey = ShiftKey;
-	for (int plq = 0; plq < Passwd.size(); plq++) {
-		ExtrapolatedKey += (int)Passwd[plq];
-	}
 	std::string FileBuffer;
+	std::string DecryptedBuffer;
 	std::ifstream InputFile(FilePath);
-	if (!InputFile.eof()) {
-		std::getline(InputFile, FileBuffer, '\0');
+	while(!InputFile.eof()) {
+		std::getline(InputFile, FileBuffer, ';');
+		DecryptedBuffer += DecryptMyString(FileBuffer);
 	}
 	InputFile.close();
 	fopen_s(&OUTPUT_FILE, "DecryptedLog.txt", "a+");
-	std::string DecryptedBuffer;
-	for (int i = 0; i < FileBuffer.size(); i++) {
-		DecryptedBuffer += FileBuffer[i] - ExtrapolatedKey;
-	}
 	fprintf(OUTPUT_FILE, "%s", DecryptedBuffer.c_str());
 	fclose(OUTPUT_FILE);
 	std::cout << "Logs decrypted successfully." << std::endl;
 	Sleep(5000);
 	exit(1);
+}
+std::string DecryptMyString(std::string EncryptedString) {
+	int Key = GetKey(EncryptedString);
+	std::string CryptedString;
+	for (int r = 0; r < EncryptedString.size(); r++) {
+		if (Key % 2 == 0) {
+			if (EncryptedString[r] % 2 == 0)
+				CryptedString += (int)EncryptedString[r] + Key - 2;
+			else
+				CryptedString += (int)EncryptedString[r] + Key - 4;
+		}
+		else {
+			if (EncryptedString[r] % 2 != 0)
+				CryptedString += (int)EncryptedString[r] + Key - 1;
+			else
+				CryptedString += (int)EncryptedString[r] + Key - 3;
+		}
+	}
+	return CryptedString;
+}
+int GetKey(std::string EncryptedString) {
+	std::string Decoded64;
+	for (int i = 4; i >= 2; i--) {
+		Decoded64 += EncryptedString[EncryptedString.size() - i];
+	}
+	EncryptedString = Decoded64;
+	ZeroMemory(&Decoded64, sizeof(Decoded64));
+	Base64::decode(EncryptedString, &Decoded64);
+	if (Decoded64.size() == 0){
+		std::cout << Decoded64.size() << EncryptedString << "\n";
+	}
+	return (int)Decoded64[0];
 }
