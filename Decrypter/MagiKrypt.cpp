@@ -28,6 +28,7 @@ input:
 	while(!InputFile.eof()) {
 		std::getline(InputFile, FileBuffer, ';');
 		DecryptedBuffer += DecryptMyString(FileBuffer);
+		DecryptedBuffer.erase(DecryptedBuffer.size()-4);
 	}
 	InputFile.close();
 	fopen_s(&OUTPUT_FILE, "DecryptedLog.txt", "a+");
@@ -43,29 +44,26 @@ std::string DecryptMyString(std::string EncryptedString) {
 	for (int r = 0; r < EncryptedString.size(); r++) {
 		if (Key % 2 == 0) {
 			if (EncryptedString[r] % 2 == 0)
-				CryptedString += (int)EncryptedString[r] + Key - 2;
+				CryptedString += (int)EncryptedString[r] - Key - 2;
 			else
-				CryptedString += (int)EncryptedString[r] + Key - 4;
+				CryptedString += (int)EncryptedString[r] - Key - 4;
 		}
 		else {
-			if (EncryptedString[r] % 2 != 0)
-				CryptedString += (int)EncryptedString[r] + Key - 1;
+			if (EncryptedString[r] % 2 == 0)
+				CryptedString += (int)EncryptedString[r] - Key - 1;
 			else
-				CryptedString += (int)EncryptedString[r] + Key - 3;
+				CryptedString += (int)EncryptedString[r] - Key - 3;
 		}
 	}
 	return CryptedString;
 }
 int GetKey(std::string EncryptedString) {
 	std::string Decoded64;
-	for (int i = 4; i >= 2; i--) {
+	for (int i = 4; i >= 1; i--) {
 		Decoded64 += EncryptedString[EncryptedString.size() - i];
 	}
 	EncryptedString = Decoded64;
 	ZeroMemory(&Decoded64, sizeof(Decoded64));
 	Base64::decode(EncryptedString, &Decoded64);
-	if (Decoded64.size() == 0){
-		std::cout << Decoded64.size() << EncryptedString << "\n";
-	}
 	return (int)Decoded64[0];
 }
