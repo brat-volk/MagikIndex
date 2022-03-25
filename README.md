@@ -16,6 +16,7 @@ Currently pretty advanced at over 1k lines of code.
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
+  <li>Auto-updates using GitHub Repo.</li>
   <li>Offers an un-encrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
   <li>ScreenGrabbing is working, with ScreenShot-On-Click and more W.I.P.</li>
