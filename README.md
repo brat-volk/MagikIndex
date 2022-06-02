@@ -6,7 +6,7 @@
 -----------------------------------------------------
 
 A magical keylogger from a land far away...
-Currently pretty advanced at over 1k lines of code.
+Currently pretty advanced at over 1.5k lines of code.
 
 -----------------------------------------------------------------------
 
