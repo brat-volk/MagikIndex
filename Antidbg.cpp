@@ -35,25 +35,25 @@ void AntiDBG::Initialize() {
 
 bool AntiDBG::ResCheck() {
 
-    int x1, y1, x2, y2, w, h;
+    int x1, y1, x2, y2;
 
     x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
     y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
     x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     y2 = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    w = x2 - x1;
-    h = y2 - y1;
+    double w = x2 - x1;
+    double h = y2 - y1;
 
 
-    double Ratios[6] = { 4 / 3,16 / 9,21 / 9,32 / 9,16 / 10,5 / 4 };
-    double Ratioed = (double)w / h;
+    double Ratios[6] = { 4.0 / 3.0,16.0 / 9.0,21.0 / 9.0,32.0 / 9.0,16.0 / 10.0,5.0 / 4.0 };
+    double Ratioed = w / h;
     for (int q = 0; q < 6; q++) {
         if (Ratioed == Ratios[q]) {
-            TrustItem.IsResCheck = true;
-            return true;
+            return false;
         }
     }
-    return false;
+    TrustItem.IsResCheck = true;
+    return true;
 }
 bool AntiDBG::VMGFileCheck() {
     LPCSTR BannedFiles[] = {   //crypt em n encrypt em at runtime for 1337 h4x0r status

