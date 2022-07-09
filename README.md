@@ -6,13 +6,13 @@
 -----------------------------------------------------
 
 A magical keylogger from a land far away...
-Currently pretty advanced at over 1.5k lines of code.
+Currently pretty advanced at over 2k lines of code.
 
 -----------------------------------------------------------------------
 
 <b> <h3> Features </h3> </b> </br>
 <ul>
-  <li><b>As of 30/01/22 it's almost FUD on VT.</b>(1/68)</li>
+  <li><b>As of 09/07/2022 we are FUD on antiscan and have 3% detection rate on HA.</b></li>
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
@@ -22,7 +22,7 @@ Currently pretty advanced at over 1.5k lines of code.
   <li>ScreenGrabbing is working, with ScreenShot-On-Click and more W.I.P.</li>
   <li>Features a wide range of diagnostic info with more on the way.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
-  <li>Does various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
+  <li>Has a system-wide evaluation and trust system that includes various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
   <li>Offers lots of easy customization with #defines at the start of the file.</li>
 </ul>
 
@@ -30,14 +30,9 @@ Currently pretty advanced at over 1.5k lines of code.
 
 <b> <h3> Screenshots </h3> </b> </br>
 
-<b>Debug-Mode Log</b>
-![new_MI_sc](https://user-images.githubusercontent.com/43145630/151706542-ebf1c3b8-f70e-41d1-9494-47d830335bd4.PNG)
+<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo zips: a crypted and an uncrypted one.
 
-<b>Crypted Log</b>
-![cryptedlog2](https://user-images.githubusercontent.com/43145630/139556328-f7c2b3e7-a794-48b9-aaa1-34e245772ef3.PNG)
-
-<b>Another Crypted Log</b>
-![cryptedlog](https://user-images.githubusercontent.com/43145630/139556316-5057eff5-a21a-4b85-a1ba-caabfb80b750.PNG)
+https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip
 
 -------------------------------------------------------------------------
 
