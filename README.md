@@ -23,7 +23,7 @@ Currently pretty advanced at over 2k lines of code.
   <li>Features a wide range of diagnostic info with more on the way.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
   <li>Has a system-wide evaluation and trust system that includes various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
-  <li>Offers lots of easy customization with #defines at the start of the file.</li>
+  <li>Offers lots of easy customization with #defines at the start of the Common header.</li>
 </ul>
 
 -----------------------------------------------------------------------
