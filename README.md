@@ -28,13 +28,13 @@ Currently pretty advanced at over 2k lines of code.
 
 -----------------------------------------------------------------------
 
-<b> <h3> Screenshots </h3> </b> </br>
+<b> <h3> Screenshots </h3> </b>
 
 <b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo zips: a crypted and an uncrypted one.</b>
 
-https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip </br>
+https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip </br></br>
 
 -------------------------------------------------------------------------
 
 Don't use my code for some shitty HackForums/RaidForums malware pasta, or at least credit me ;P</br></br>
-<b>Be aware that i don't take any responsibility of the potential harm caused by this program.</b>
+<b>Be aware that i don't take any responsibility for the potential harm caused by this program.</b>
