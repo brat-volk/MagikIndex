@@ -12,7 +12,7 @@ Currently pretty advanced at over 2k lines of code.
 
 <b> <h3> Features </h3> </b> </br>
 <ul>
-  <li><b>As of 09/07/2022 we are FUD on antiscan and have 3% detection rate on HA.</b></li>
+  <li><b> As of 09/07/2022 we are FUD on antiscan and have 3% detection rate on HA. 😎</b></li></br>
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
