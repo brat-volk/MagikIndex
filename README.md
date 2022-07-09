@@ -1,4 +1,4 @@
-#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex
+#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V1.8
 
 
 <b><h3>🚧Work In Progress🚧</h3></b>
@@ -30,9 +30,9 @@ Currently pretty advanced at over 2k lines of code.
 
 <b> <h3> Screenshots </h3> </b> </br>
 
-<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo zips: a crypted and an uncrypted one.
+<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo zips: a crypted and an uncrypted one.</b>
 
-https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip
+https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip </br>
 
 -------------------------------------------------------------------------
 
