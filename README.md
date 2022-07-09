@@ -30,7 +30,7 @@ Currently pretty advanced at over 2k lines of code.
 
 <b> <h3> Screenshots </h3> </b>
 
-<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo zips: a crypted and an uncrypted one.</b>
+<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo logs: a crypted and an uncrypted one.</b>
 
 https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip </br></br>
 
