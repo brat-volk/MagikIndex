@@ -17,7 +17,7 @@ Currently pretty advanced at over 2k lines of code.
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
   <li>Auto-updates using GitHub Repo.</li>
-  <li>Offers an un-encrypted and VM-friendly mode for debugging purposes.</li>
+  <li>Offers an unencrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
   <li>ScreenGrabbing is working, with ScreenShot-On-Click and more W.I.P.</li>
   <li>Features a wide range of diagnostic info with more on the way.</li>
@@ -30,7 +30,7 @@ Currently pretty advanced at over 2k lines of code.
 
 <b> <h3> Screenshots </h3> </b>
 
-<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo logs: a crypted and an uncrypted one.</b>
+<b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo logs: a crypted and an unencrypted one.</b>
 
 https://github.com/brat-volk/MagikIndex/raw/development/DemoLogs.zip </br></br>
 
