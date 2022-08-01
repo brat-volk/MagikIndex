@@ -49,7 +49,7 @@ Download the source code from this Git repository.
 Setup 2FA and App Passwords on your "email sender" google account.
 
 </br><b> Step 3:</b></br>
-Create your HardEncode and HardDecode functions to crypt the authentication string. (you will have to also re-encrypt several pre-encrypted strings)</br>
+Create your HardEncode and HardDecode functions to crypt the authentication strings. (you will have to also re-encrypt several pre-encrypted strings)</br>
 OR reverse the one i already wrote.</br>
 Another possibility is to ditch Auth string encryption, be aware that this exposes strings to reverse engineering.
 
