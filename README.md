@@ -64,17 +64,8 @@ Set Project->C/C++->Optimization->Whole Program Optimization to "No", Optimizati
 Set Project->C/C++->Code Generation->Runtime Library to "/MT Multi-Threaded".</br>
 Ensure that the project is set to Release x64.
 
-</br><b> Step 5.5:(OPTIONAL)</b></br>
-Research how to lower detection rates and mislead reverse engineers using project settings, there are loads of articles/forum posts on the subject.</br>
-This helps a lot in evading AVs.
-
 </br><b> Step 6:</b></br>
 Ctrl+shift+b to compile.
-
-</br><b> Step 6.5(OPTIONAL):</b></br>
-Manipulate the executable to strip sensitive data / make static analysis harder.</br>
-It's up to you to find out how.
-
 
 </br></br><b><h3>And here is your compiled, working, binary.</h3></b></br>
 
