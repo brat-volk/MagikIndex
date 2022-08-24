@@ -17,6 +17,7 @@ Currently pretty advanced at over 2k lines of code.
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
   <li>Auto-updates using GitHub Raw or any other cloud service.</li>
+  <li>Detects Ctrl+C and automatically retrieves the clipboard's contents.</li>
   <li>Offers an unencrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
   <li>ScreenGrabbing is working, with ScreenShot-On-Click and Timer modes.</li>
