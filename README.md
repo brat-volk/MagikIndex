@@ -1,4 +1,4 @@
-#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V1.8
+#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V1.9
 
 
 <b><h3>🚧Work In Progress🚧</h3></b>
@@ -16,10 +16,10 @@ Currently pretty advanced at over 2k lines of code.
   <li>Retrieves logs to any email address. Even if an internet connection is absent at the time of logging.</li>
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
-  <li>Auto-updates using GitHub Repo.</li>
+  <li>Auto-updates using GitHub Raw or any other cloud service.</li>
   <li>Offers an unencrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
-  <li>ScreenGrabbing is working, with ScreenShot-On-Click and more W.I.P.</li>
+  <li>ScreenGrabbing is working, with ScreenShot-On-Click and Timer modes.</li>
   <li>Features a wide range of diagnostic info with more on the way.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
   <li>Has a system-wide evaluation and trust system that includes various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
@@ -40,7 +40,7 @@ HybridAnalysis:
 
 -----------------------------------------------------------------------
 
-<b> <h3> How to use: </h3> </b> (had to add this since people keep downlading the precompiled binaries)
+<b> <h3> How to use: </h3> </b>
 
 <b> Step 1:</b></br>
 Download the source code from this Git repository.
