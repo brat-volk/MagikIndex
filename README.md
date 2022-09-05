@@ -59,7 +59,7 @@ Edit the "common.h" header, customizing the behaviour of the keylogger and addin
 
 </br><b> Step 5:</b></br>
 Add "masm" to the project build dependencies.</br>
-Make sure that "random.asm" is <b>not</b> excluded from the build, also set its item as Microsoft Macro Assembler.</br>
+Make sure that "random.asm" is <b>not</b> excluded from the build, also set its item type as Microsoft Macro Assembler.</br>
 Set Project->Linker->System->Subsystem to "WINDOWS".</br>
 Set Project->C/C++->Optimization->Whole Program Optimization to "No", Optimization to /Ox and Favor Size Or Speed to "Neither".</br>
 Set Project->C/C++->Code Generation->Runtime Library to "/MT Multi-Threaded".</br>
