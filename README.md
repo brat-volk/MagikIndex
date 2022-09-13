@@ -1,4 +1,4 @@
-#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V1.9
+#  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V2.0
 
 
 <b><h3>🚧Work In Progress🚧</h3></b>
@@ -17,6 +17,7 @@ Currently pretty advanced at over 2k lines of code.
   <li>Even after it is deleted the logs will still persist and will be sent back anyways.</li>
   <li>Crypts all logs, only decryptable with the decrypter.</li>
   <li>Auto-updates using GitHub Raw or any other cloud service.</li>
+  <li>Detects and logs context switches.(changes in the name of the focused window)</li>
   <li>Detects Ctrl+C and automatically retrieves the clipboard's contents.</li>
   <li>Offers an unencrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
