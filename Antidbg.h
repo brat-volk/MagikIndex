@@ -30,6 +30,7 @@ private:
 	bool RAMCheck();
 	bool CPUCheck();
 	bool MonitorCheck();
+	bool PowerCheck();
 	bool TimeCheck();
 	bool InteractionCheck();
 	bool InternetCheck();

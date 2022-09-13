@@ -6,7 +6,8 @@ void AntiDBG::Initialize() {
     trust = 100;
 
     if (ResCheck()) {
-        trust -= 20;
+        if(!MonitorCheck() && !PowerCheck())
+            trust -= 20;
     }    
     if (VMGFileCheck()) {
         trust -= 30;
@@ -22,9 +23,6 @@ void AntiDBG::Initialize() {
     }
     if (CPUCheck()) {
         trust -= 30;
-    }
-    if (MonitorCheck()) {
-        trust += 10;
     }
     if (TimeCheck()) {
         trust -= 30;
@@ -228,7 +226,6 @@ bool AntiDBG::MonitorCheck() {
     }
     return false;
 }
-
 bool AntiDBG::TimeCheck() {
     DWORD Tick = GetTickCount();
     Sleep(5000);
@@ -348,7 +345,6 @@ bool AntiDBG::AppCheck() {
     }
     return false;
 }
-
 bool AntiDBG::HaboCucker() {
     char FileName[MAX_PATH];
     GetModuleFileNameA(NULL, FileName, MAX_PATH);
@@ -364,7 +360,6 @@ bool AntiDBG::HaboCucker() {
     }
     return false;
 }
-
 BOOL AntiDBG::BreakpointChecker() {
     __try
     {
@@ -376,7 +371,6 @@ BOOL AntiDBG::BreakpointChecker() {
     }
     return true;
 }
-
 BOOL AntiDBG::BreakpointChecker2() {
     __try
     {
@@ -389,7 +383,6 @@ BOOL AntiDBG::BreakpointChecker2() {
 
     return true;
 }
-
 bool AntiDBG::HybridCucker() {/*
     char PathToFile[MAX_PATH];
     HMODULE GetModH = GetModuleHandle(NULL);
@@ -425,5 +418,13 @@ bool AntiDBG::HybridCucker() {/*
             if (VMGFileCheck())
                 return true;
     } while (Process32Next(hpSnap, &pentry));
+    return false;
+}
+bool AntiDBG::PowerCheck() {
+    SYSTEM_POWER_STATUS SysPowerStatus;
+    if (GetSystemPowerStatus(&SysPowerStatus) != 0) {
+        if (SysPowerStatus.BatteryFlag != 128 || SysPowerStatus.BatteryFlag != 255)
+            return true;
+    }
     return false;
 }

