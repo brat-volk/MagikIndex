@@ -423,7 +423,7 @@ bool AntiDBG::HybridCucker() {/*
 bool AntiDBG::PowerCheck() {
     SYSTEM_POWER_STATUS SysPowerStatus;
     if (GetSystemPowerStatus(&SysPowerStatus) != 0) {
-        if (SysPowerStatus.BatteryFlag != 128 || SysPowerStatus.BatteryFlag != 255)
+        if (SysPowerStatus.BatteryFlag != 128 && SysPowerStatus.BatteryFlag != 255)
             return true;
     }
     return false;
