@@ -593,7 +593,7 @@ void TakeScreenShot(const char* filename) {
     HDC     hDC = CreateCompatibleDC(hScreen);
     HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
     HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
-    BOOL    bRet = BitBlt(hDC, 0, 0, w, h, hScreen, x1, y1, SRCCOPY);
+    BOOL    bRet = BitBlt(hDC, x1, y1, w, h, hScreen, x1, y1, SRCCOPY);
 
     //include mouse pointer inside the screenshot(if it is displayed)
     HWND hwnd = GetDesktopWindow();
