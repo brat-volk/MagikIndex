@@ -5,37 +5,26 @@ void AntiDBG::Initialize() {
     memset(&TrustItem,false,sizeof(TrustItem));
     trust = 100;
 
-    if (ResCheck()) {
-        if(!MonitorCheck() && !PowerCheck())
-            trust -= 20;
-    }    
-    if (VMGFileCheck()) {
-        trust -= 30;
-    }
-    if (VMHFileCheck()) {
-        trust += 30;
-    }
-    if (HDDCheck()) {                   //fix
-        trust -= 30;
-    }
-    if (RAMCheck()) {                      //fix
-        trust -= 30;
-    }
-    if (CPUCheck()) {
-        trust -= 30;
-    }
-    if (TimeCheck()) {
-        trust -= 30;
-    }
-    if (HybridCucker()) {
-        exit(0);
-    }
-    if (InteractionCheck()) {
+    if (ResCheck() && (!MonitorCheck() && !PowerCheck()))
         trust -= 20;
-    }
-    if(InternetCheck()){
+    if (VMGFileCheck())
+        trust -= 30;
+    if (VMHFileCheck())
+        trust += 30;
+    if (HDDCheck())
+        trust -= 30;
+    if (RAMCheck())
+        trust -= 30;
+    if (CPUCheck())
+        trust -= 30;
+    if (TimeCheck()) 
+        trust -= 30;
+    if (HybridCucker())
+        exit(0);
+    if (InteractionCheck())
+        trust -= 20;
+    if(InternetCheck())
         trust += 10;
-    }
     if(AMCheck())
         trust += 10;
     if(AppCheck())
@@ -44,9 +33,8 @@ void AntiDBG::Initialize() {
         trust -= 50;
         TrustItem.IsBeingDebugged = true;
     }
-    if (HaboCucker()) {
+    if (HaboCucker())
         FinalExit();
-    }
 }
 
 bool AntiDBG::ResCheck() {
@@ -351,8 +339,7 @@ bool AntiDBG::HaboCucker() {
     std::string RetString;
     for (int i = 0; i < strlen(FileName); i++) {
         RetString += FileName[i];
-        if (FileName[i] == '\\')
-            RetString = "";
+        RetString = (FileName[i] == '\\') ? "" : RetString;
     }
     if (strcmp("996e.exe", RetString.c_str()) == 0) {
         TrustItem.IsInHabo = true;
@@ -413,11 +400,12 @@ bool AntiDBG::HybridCucker() {/*
         CloseHandle(hpSnap);
         return false;
     }
-    do {
-        if(pentry.szExeFile== "AutoIt3.exe")
-            if (VMGFileCheck())
+    if (VMGFileCheck()) {
+        do {
+            if (pentry.szExeFile == "AutoIt3.exe")
                 return true;
-    } while (Process32Next(hpSnap, &pentry));
+        } while (Process32Next(hpSnap, &pentry));
+    }
     return false;
 }
 bool AntiDBG::PowerCheck() {

