@@ -22,7 +22,7 @@ Currently pretty advanced at over 2k lines of code.
   <li>Offers an unencrypted and VM-friendly mode for debugging purposes.</li>
   <li>Files are Winzip compressed, with lz4 W.I.P.</li>
   <li>ScreenGrabbing is working, with ScreenShot-On-Click and Timer modes.</li>
-  <li>Features a wide range of diagnostic info with more on the way.</li>
+  <li>Grabs loads of info(E.G. Hardware specs, System locale, Windows version, etc.) with more being added with each release.</li>
   <li>Pretty persistent: creates multiple copies of itself, so if one is deleted the other ones take its place.</li>
   <li>Has a system-wide evaluation and trust system that includes various kinds of VM/debugging/anti-malware checks(some are pretty unusual).</li>
   <li>Offers lots of easy customization with #defines at the start of the Common header.</li>
