@@ -29,10 +29,11 @@ void AntiDBG::Initialize() {
         trust += 10;
     if(AppCheck())
         trust += 10;
-    if (IsDebuggerPresent() || BreakpointChecker() || BreakpointChecker2()) {
-        trust -= 50;
-        TrustItem.IsBeingDebugged = true;
-    }
+    if(!Hyperion)
+        if (IsDebuggerPresent() || BreakpointChecker() || BreakpointChecker2()) {
+            trust -= 50;
+            TrustItem.IsBeingDebugged = true;
+        }
     if (HaboCucker())
         FinalExit();
 }

