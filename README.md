@@ -64,7 +64,7 @@ Make sure that "random.asm" is <b>not</b> excluded from the build, also set its 
 Set Project->Linker->System->Subsystem to "WINDOWS".</br>
 Set Project->C/C++->Optimization->Whole Program Optimization to "No", Optimization to /Ox and Favor Size Or Speed to "Neither".</br>
 Set Project->C/C++->Code Generation->Runtime Library to "/MT Multi-Threaded".</br>
-Add the /Zc:trigraphs compiler flag.
+Add the /Zc:trigraphs compiler flag.</br>
 Ensure that the project is set to Release x64.
 
 </br><b> Step 6:</b></br>
