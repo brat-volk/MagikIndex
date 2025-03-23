@@ -1,8 +1,6 @@
 #  ![indekkusu](https://user-images.githubusercontent.com/43145630/139555514-de439851-d18e-4ef4-832b-0845276687b0.png) </br> MagikIndex V2.2
 
 
-<b><h3>🚧Work In Progress🚧</h3></b>
-
 -----------------------------------------------------
 
 A magical keylogger from a land far away...
